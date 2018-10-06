@@ -1,0 +1,11 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.html
+*.pdf
+*.txt
+*.tex
+**/packrat/lib*/
+**/packrat/bundles*/
+
