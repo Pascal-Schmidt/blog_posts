@@ -1,0 +1,64 @@
+---
+title: "R Notebook"
+output:
+  word_document: default
+  html_notebook: default
+---
+```{r}
+library(ggplot2)
+```
+
+
+```{r}
+x <- seq(0, 100, length = 1000)
+plot(x, ((x * (x + 1)) / 2),
+  type = "l",
+  col = 1,
+  lwd = 2,
+  main = "Number of Parameters that have to be Estimated \n LDA vs. QDA",
+  xlab = "Number of Dimensions", ylab = "Number of Parameters"
+)
+
+lines(x, (x + 1),
+  col = 2,
+  lty = 2,
+  lwd = 2
+)
+
+legend(
+  x = "topleft",
+  col = 1:2,
+  lty = c(1, 2),
+  c("Parameters in QDA", "Parameters in LDA"),
+  lwd = c(2, 2)
+)
+```
+
+
+```{r}
+mu_1 <- 1
+mu_2 <- (-1)
+sigma <- 1
+pi_1 <- 0.35
+pi_2 <- 0.65
+x <- seq(from = -4, to = 4, length = 100)
+f_1 <- dnorm(x, mean = mu_1, sd = sigma)
+f_2 <- dnorm(x, mean = mu_2, sd = sigma)
+delta <- function(x, mu, sigma, pi) {
+  x * mu / sigma^2 - mu^2 / (2 * sigma^2) + log(pi)
+}
+delta_1 <- delta(x, mu_1, sigma, pi_1)
+delta_2 <- delta(x, mu_2, sigma, pi_2)
+df <- data.frame(x = x, f_1 = f_1, f_2 = f_2, delta_1 = delta_1, delta_2 = delta_2)
+```
+
+```{r}
+ggplot(df, aes(x = x)) +
+  geom_line(aes(y = f_1 * pi_1), color = "blue") +
+  geom_line(aes(y = f_2 * pi_2), color = "red") +
+  labs(y = expression(f[k](x) * pi[k])) +
+  theme_bw() +
+  geom_vline(xintercept = (mu_1 + mu_2) / 2 + sigma^2 * log(pi_2 / pi_1) / (mu_1 - mu_2), linetype = "dotted") +
+  annotate("text", x = 0.99, y = 0.225, label = "Boundary (0.31)")
+```
+
