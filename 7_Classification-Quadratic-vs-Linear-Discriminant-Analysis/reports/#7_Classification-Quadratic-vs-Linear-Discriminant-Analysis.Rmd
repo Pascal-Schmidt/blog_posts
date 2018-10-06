@@ -1,0 +1,192 @@
+---
+title: "Classification"
+author: "Pascal Schmidt"
+date: "February 23, 2018"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r global_options, include = FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(MASS)
+library(broom)
+library(AUC)
+library(here)
+library(pander)
+```
+
+```{r}
+diabetes <- read.csv(here::here("docs", "diabetes.csv"))
+```
+
+```{r}
+head(diabetes, 3)
+dim(diabetes)
+diabetes <- dplyr::rename(diabetes, Pedigree = DiabetesPedigreeFunction)
+```
+
+```{r}
+diabetes[, 2:6][diabetes[, 2:6] == 0] <- NA # replaces all zero values from column two to six with NA
+diabetes <- na.omit(diabetes) # now we omit all NA values
+diabetes$Outcome <- ifelse(diabetes$Outcome == 1, "Diabetes", "No Diabetes")
+```
+
+```{r}
+lda_model <- MASS::lda(Outcome ~., data = diabetes)
+preds <- predict(lda_model)
+head(preds$posterior)
+```
+
+```{r}
+lda_model
+```
+```{r include=FALSE}
+png(here::here("figs", "lda_distribution.png"))
+```
+
+
+```{r}
+plot(lda_model)
+```
+```{r include=FALSE}
+dev.off()
+```
+
+
+```{r results="asis"}
+diabetes <- data.frame(diabetes, predicted = preds$class)
+xtabs(~ predicted + Outcome, data = diabetes) %>%
+  pander::pandoc.table()
+```
+
+```{r}
+# prediction accuracy
+round((232+76)/(392), 4)
+```
+
+```{r}
+# error
+round((30+54)/(392), 4)
+```
+
+```{r}
+posterior_yes <- preds$posterior[, "Diabetes"]
+true_yes <- (diabetes$Outcome == "Diabetes") %>% 
+  as.numeric() %>% 
+  factor()
+ROC_res <- roc(posterior_yes, true_yes)
+tidy_ROC <- tidy(ROC_res)
+
+ggplot(tidy_ROC, aes(x = fpr, y = tpr)) + 
+  geom_point(pch = ".") + 
+  geom_vline(xintercept = 0.15)
+```
+
+```{r include=FALSE}
+ggsave(here::here("figs", "ROC_curve_lda.jpeg"))
+```
+
+```{r results="asis"}
+tidy_ROC %>% 
+  filter(fpr >= 0.148, fpr<=0.151) %>%
+  pander::pandoc.table()
+```
+
+```{r results="asis"}
+n <- nrow(diabetes)
+thresh <- 0.3620957
+dclass <- rep("No",n)
+dclass[posterior_yes > thresh] <- "Diabetes"
+outcome <- data.frame(diabetes, pred_new = dclass)
+xtabs(~ pred_new + Outcome, data = outcome) %>%
+  pander::pandoc.table()
+```
+
+```{r}
+(223+92)/(392)
+```
+
+```{r}
+auc(ROC_res)
+```
+
+
+```{r}
+diabetes <- read.csv(here::here("docs", "diabetes.csv"))
+```
+
+```{r}
+head(diabetes, 3)
+dim(diabetes)
+diabetes <- dplyr::rename(diabetes, Pedigree = DiabetesPedigreeFunction)
+```
+
+```{r}
+diabetes[, 2:6][diabetes[, 2:6] == 0] <- NA # replaces all zero values from column two to six with NA
+diabetes <- na.omit(diabetes) # now we omit all NA values
+diabetes$Outcome <- ifelse(diabetes$Outcome == 1, "Diabetes", "No Diabetes")
+```
+
+```{r}
+qda_model <- qda(Outcome ~., data = diabetes)
+preds <- predict(qda_model)
+head(preds$posterior)
+qda_model
+```
+
+```{r results="asis"}
+diabetes <- data.frame(diabetes, predicted = preds$class)
+xtabs(~ predicted + Outcome, data = diabetes) %>%
+  pander::pandoc.table()
+```
+
+```{r}
+(230+86)/(392)
+```
+
+
+```{r}
+posterior_yes <- preds$posterior[, "Diabetes"]
+true_yes <- (diabetes$Outcome == "Diabetes") %>% 
+  as.numeric() %>% 
+  factor()
+
+ROC_res <- roc(posterior_yes, true_yes)
+tidy_ROC <- tidy(ROC_res)
+
+ggplot(tidy_ROC, aes(x = fpr, y = tpr)) + 
+  geom_point(pch = ".") + 
+  geom_vline(xintercept = 0.135)
+```
+
+```{r include=FALSE}
+ggsave(here::here("figs", "ROC_curve_qda.jpeg"))
+```
+
+```{r results="asis"}
+tidy_ROC %>% 
+  filter(fpr >= 0.13, fpr<=0.14) %>%
+  pander::pandoc.table()
+```
+
+```{r results="asis"}
+n <- nrow(diabetes)
+thresh <- 0.4432782
+dclass <- rep("No",n)
+dclass[posterior_yes > thresh] <- "Diabetes"
+outcome <- data.frame(diabetes, pred_new = dclass)
+xtabs(~ pred_new + Outcome, data = outcome) %>%
+  pander::pandoc.table()
+```
+
+```{r}
+(91+226)/(392)
+```
+
