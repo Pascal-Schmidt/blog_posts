@@ -1,0 +1,550 @@
+---
+title: "Titanic"
+author: "Pascal Schmidt"
+date: "August 26, 2018"
+output: html_document
+---
+
+The Titanic data set is said to be the starter for every aspiring data scientist. So it was that I sat down two years ago, after having taken an econometrics course in university which introduced me to R, thinking to give the competition a shot. My goal was to achieve an accuracy of 80% or higher. Boy was I wrong! 
+My first try in this competition ended up with me producing some tables (with the table() function) and trying to solve the challenge with a linear regression model :) :) :). In short, I missinterpreted what the data science community meant by "a competition for beginners". Now, two years later, I again tried my luck. Knowing about terms like training and testing data sets, overfitting, cross-validation, bias-variance trade-off, regular expressions, and about different classification models makes me hopefully better prepared this time. After almost having completed a Statistics degree, countless hours on coursera, data camp and stackoverflow, and after having a data science internship under my belt I finally declare myself a "beginner" in the data science community and ready for the competition. 
+
+Long story short, don't be discouraged if you hear the words "beginner competition", but are not yet able to understand everything or produce the results other people showcase in their kernels. 
+
+This blog post is an attempt to make the competition more accessible to beginners. Throughout the post, I am explaining my code and why I do things the way I do. Let's junp right into it.
+
+What I am going to cover in this blog:
+
+- An exploratory data analysis with ggplot and dplyr
+- Feature Engeneering for some variables
+- Dealing with missing values
+- Model Building
+- Model Evaluation
+
+In the end, I am ending up with a score of 79.5%. Pretty dissappointing for me and I didn't achieve my initial goal of 80%. This is why in the second part of this tutorial, I evaluated the so called gender model with which I achieved a score of 81.82%. 
+
+First, we are loading the libraries we need.The tidyverse consists of various packages (dplyr, ggplot, etc.) and is perfect for data manipualtions. The ggbubr package is nice for visualizatons and gives us some extra flexibility. The arsenal package is for easily creating some nice loking tables. The other packages are for building predictive models. 
+
+After having loaded the packages, we are loading in the data sets. In order to rbind() them, the train and test data sets have to have equivalent columns. That is why I am creating the `Survived` column in the test data set. After that, I am transforming some variables with mutste() to characters and factors.
+
+```{r include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+```{r warning=FALSE, message=FALSE}
+library(tidyverse)
+library(ggpubr)
+library(arsenal)
+library(pander)
+library(here)
+library(caret)
+library(class)
+library(MASS)
+library(randomForest)
+library(knitr)
+
+train <- read.csv(here::here("docs", "train.csv"))
+test <- read.csv(here::here("docs", "test.csv"))
+test$Survived <- NA
+titanic <- rbind(train, test) # combining data sets
+
+titanic %>%
+  dplyr::mutate(
+    Name = as.character(Name),
+    Ticket = as.character(Ticket),
+    Cabin = as.character(Cabin),
+    Survived = as.factor(Survived),
+    Pclass = as.factor(Pclass)
+  ) -> titanic
+```
+
+# Exploratory Data Analysis of Titanic Variables
+
+### Investigating Gender
+
+For all my plots, I am using ggplot. If you are unfamiliar with the syntax, the R for data science book, data camp, and the ggplot cheat sheet are great resources which you can refer to.  
+
+```{r fig.width=12}
+plot_count <- ggplot(titanic[1:891, ], aes(x = Sex, fill = Survived)) +
+  geom_bar() +
+  scale_fill_manual(
+    name = "Survived",
+    values = c("red", "blue"),
+    labels = c("No", "Yes"),
+    breaks = c("0", "1")
+  ) +
+  ggtitle("Most of the Titanic Passengers are Male.\n Most Passengers Who Survived Were Female") +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "bottom"
+  )
+
+plot_percent <- ggplot(titanic[1:891, ], aes(x = Sex, fill = Survived)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(
+    name = "Survived",
+    values = c("red", "blue"),
+    labels = c("No", "Yes"),
+    breaks = c("0", "1")
+  ) +
+  ggtitle("75% of all Female Passengers Survived whereas only \n around 20% of the Male Passengers Survived") +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "bottom"
+  ) +
+  ylab("%")
+
+
+ggarrange(plot_count, plot_percent)
+```
+
+```{r include=FALSE}
+ggsave(here::here("figs", "gender.jpeg"), ggarrange(plot_count, plot_percent), width = 15)
+```
+
+It loks like most of the female titanic passengers survived and most of the male passengers survived. This becomes especially visible when looking at the percentages on the right plot. 75% of all female passengers survived whereas less than 25% of male passengers survived. 
+
+This is a very crucial finding and is also the key for the 81.82% success of the gender model I am discussing in part 2. 
+
+
+### Investigating Gender and Class
+
+```{r fig.width=12}
+plot_count <- ggplot(titanic[1:891, ], aes(x = Sex, fill = Survived)) +
+  geom_bar() +
+  facet_wrap(~Pclass) +
+  scale_fill_manual(
+    name = "Survived",
+    values = c("red", "blue"),
+    labels = c("No", "Yes"),
+    breaks = c("0", "1")
+  ) +
+  theme(legend.position = "bottom")
+
+plot_percent <- ggplot(titanic[1:891, ], aes(x = Sex, fill = Survived)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~Pclass) +
+  scale_fill_manual(
+    name = "Survived",
+    values = c("red", "blue"),
+    labels = c("No", "Yes"),
+    breaks = c("0", "1")
+  ) +
+  theme(legend.position = "bottom") +
+  ylab("%")
+
+combined_figure <- ggpubr::ggarrange(plot_count, plot_percent)
+ggpubr::annotate_figure(combined_figure,
+  top = text_grob("Almost All Female Passengers Who are Class One and Two Survived. The Big Proportion of Men not Surviving \n Mainly Comes From Male Class 3 Passengers",
+    color = "black",
+    face = "bold",
+    size = 14
+  )
+)
+```
+
+```{r include=FALSE}
+ggsave(here::here("figs", "gender_by_class.jpeg"), width = 15)
+```
+
+
+Next, we'll have a look at the passenger class. Almost all female passengers in classes 1 and 2 survived whereas for male, the passenger class is not a great predictor for survival. This is because regardless of class, male passengers do not really seem to benefit much from being in higher classes. 
+
+```{r fig.width=8}
+plot_age <- ggplot(titanic[1:891, ], aes(x = Age, fill = Survived)) +
+  geom_histogram() +
+  scale_fill_manual(
+    name = "Survived",
+    values = c("red", "blue"),
+    labels = c("No", "Yes"),
+    breaks = c("0", "1")
+  ) +
+  theme(legend.position = "bottom")
+
+plot_fare <- ggplot(titanic[1:891, ], aes(x = Fare, fill = Survived)) +
+  geom_histogram() +
+  scale_fill_manual(
+    name = "Survived",
+    values = c("red", "blue"),
+    labels = c("No", "Yes"),
+    breaks = c("0", "1")
+  ) +
+  theme(legend.position = "bottom")
+
+plot_embarked <- ggplot(titanic[1:891, ], aes(x = Embarked, fill = Survived)) +
+  geom_bar() +
+  scale_fill_manual(
+    name = "Survived",
+    values = c("red", "blue"),
+    labels = c("No", "Yes"),
+    breaks = c("0", "1")
+  ) +
+  theme(legend.position = "bottom")
+
+ggpubr::ggarrange(plot_age, plot_fare, plot_embarked, common.legend = TRUE, ncol = 3)
+```
+
+```{r include=FALSE}
+ggsave(here::here("figs", "Fare_Age_Embarked.jpeg"), width = 15)
+```
+
+
+- For the age variable, we can see that younger children are more likely to survive. From around 0 - 10, the survival chances are pretty good. 
+
+- There are a lot of fares that cost around $10. People who paid this amount had really bad survival chances. It seems like the more expensive the fare, the better the survival chances are. 
+
+- The second plot shows where people embarked. This plot does not say a lot about survival. We can see however, that we have some missing values there and most people came on board in S which stands for Southampton. 
+
+### Investigating The Titles of Passengers
+
+Next, wed do some feature engeneering. This means, we are deriving new variables which have more explanatory power in predicting who survied and died from already existing variables in the data set. Such a variable is `Names` for example. In order to that, it is advantageous to have some basic understanding of regular expressions. When I first looked at other people's kernels, I had no idea how they got the titles out of the name variable. The code looks pretty complicated and it takes some time to get used to regular expressions. 
+
+```{r results="asis"}
+head(titanic$Name) %>%
+  pander::pandoc.table()
+```
+
+When we look at the output of the head function, then we see that for every passenegr name starts with their last name, followed by a comma, followed by their title with a dot, and then their first names. We are going to extract the title with the gsub() function.
+
+Here is a little working example.In order to extract the title of my name from the string below we are saying that everything before and including the comma should be removed and then everything after and including the dot should be removed as well.
+
+```{r}
+x <- "Schmidt, Mr. Pascal David Fabian"
+```
+
+We do that with the code below. The .*, means we remove everything before the comma. The comma (,) is a special character and therefore, we need these two backward slashes (\\) in front of the comma. Then we have the "or" (|) bar. After that we need the two backward slashes again because the literal dot after the titles is also a special character. Then we say remove everything after the dot again. So what we are doing is replacing "Schmidt, " with nothing and then " Pascal David Fabian" with nothing as well. And voila, we are left with the title only. 
+
+```{r}
+gsub("(.*\\,|\\..*)", "", x) %>%
+  gsub("[[:space:]]", "", .)
+```
+
+We do that for the entire Name vector, saving the titles in the `titles` object and then displaying how many titles there are with the table() function. 
+
+```{r results="asis"}
+titanic$titles <- gsub("(.*\\,|\\..*)", "", titanic$Name) %>%
+  gsub("[[:space:]]", "", .)
+table(titanic$titles) %>%
+  pander::pandoc.table(split.table = Inf)
+```
+
+After that, we are going to do some visualizations. Of course in ggplot again!
+
+```{r results="asis"}
+title_sum <- titanic[1:891, ] %>%
+  dplyr::group_by(titles, Survived) %>%
+  dplyr::summarise(freq = n()) %>%
+  ungroup() %>%
+  dplyr::mutate(
+    total = sum(freq),
+    prop = freq / total
+  )
+
+titles <- ggplot(title_sum, aes(x = titles, y = prop, group = Survived)) +
+  geom_col(aes(fill = Survived), position = "fill") +
+  geom_text(aes(label = freq), position = position_fill(vjust = .5), col = "white") +
+  scale_fill_manual(
+    name = "Survived",
+    values = c("red", "blue"),
+    labels = c("No", "Yes"),
+    breaks = c("0", "1")
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    axis.text.x = element_text(angle = -45, hjust = 0)
+  )
+
+titles
+```
+
+```{r include=FALSE}
+ggsave(here::here("figs", "title_titanic.jpeg"))
+```
+
+We do some data manipulation with dplyr in order to see the percentage of survived versus died passengers for each unique title. Then we are plotting.
+Aouch, a lot of misters died! Wow that's actually quite interesting. Mrs, and Miss does pretty well. So let's group some of the titles together. We do that with the code below. 
+
+```{r results="asis"}
+titanic$titles[titanic$titles %in% c("Lady", "theCountess", "Dona", "Jonkheer", "Don", "Sir", "Dr")] <- "Rare Titles"
+titanic$titles[titanic$titles %in% c("Ms", "Mme", "Mlle")] <- "Mrs"
+titanic$titles[titanic$titles %in% c("Capt", "Col", "Major", "Rev")] <- "Officers"
+titanic$titles <- as.factor(titanic$titles)
+summary(arsenal::tableby(Survived ~ titles,
+                         data = titanic,
+                         test = FALSE,
+                         total = FALSE
+))
+```
+
+### Investigating the Cabin Numbers
+
+A lot of cabin numbers are missing. This is really unforunate because I think based on the viualization, our final model could have improved from the correct cabin numbers of every single passenger. 
+
+```{r}
+titanic$Cabin_letter <- substr(titanic$Cabin, 1, 1)
+titanic$Cabin_letter[titanic$Cabin_letter == ""] <- "Unkown"
+
+title_sum <- titanic[1:891, ] %>%
+  group_by(Cabin_letter, Survived) %>%
+  summarise(freq = n()) %>%
+  ungroup() %>%
+  mutate(
+    total = sum(freq),
+    prop = freq / total
+  )
+
+ggplot(title_sum, aes(x = Cabin_letter, y = prop, group = Survived)) +
+  geom_col(aes(fill = Survived), position = "fill") +
+  geom_text(aes(label = freq), position = position_fill(vjust = .5), col = "white") +
+  scale_fill_manual(
+    name = "Survived",
+    values = c("red", "blue"),
+    labels = c("No", "Yes"),
+    breaks = c("0", "1")
+  ) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ggtitle("Passengers on Deck B, D, and E had Good Survival Chances With About 75%. \n Most Passengers on Unkown Decks Died.")
+```
+
+```{r include=FALSE}
+ggsave(here::here("figs", "cabin_letter.jpeg"), width = 8)
+```
+
+```{r}
+titanic$Cabin_letter <- as.factor(titanic$Cabin_letter)
+```
+
+The cabin numbers are representing on which deck each passeneger was. Survival is pretty good for decks B, D, and E. A lot of passengers from unkown cabin numbers died. Unfortunately, there are too many missing values in the `Cabin` variable. 
+
+At this point, we are not doing anything with the cabin numbers. However, they'll be very important in part 2 when it comes to our gender model.
+
+Next, we are investigating the family sizes of passengers.Sibsp is the number of siblings or spouses on board of the titanic. Parch is the number of parents or children on board of the titanic. So we are feature engeneering a variable called `family_size` which will consists of Parch, Sibsp and the passenger themself. 
+
+### Investigating Families
+
+```{r}
+titanic$family_size <- titanic$SibSp + titanic$Parch + 1
+
+ggplot(titanic[1:891, ], aes(x = family_size, fill = Survived)) +
+  geom_bar() +
+  scale_fill_manual(
+    name = "Survived",
+    values = c("red", "blue"),
+    labels = c("No", "Yes"),
+    breaks = c("0", "1")
+  ) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_x_continuous(breaks = seq(1, 11, 1)) +
+  ggtitle("Most People Travelled By Themselves. \n Survival is highest for Couples and Parents With 1 and 2 Children. \n For Families With More Than 2 Children Survival Chances are Bad.")
+```
+
+```{r include=FALSE}
+ggsave(here::here("figs", "families.jpeg"), width = 8)
+```
+
+```{r}
+titanic$family_size[titanic$family_size %in% c("5", "6", "7", "8", "9", "10", "11")] <- "Big Family"
+titanic$family_size <- as.factor(titanic$family_size)
+```
+
+It seems like the survival is highest for couples and parents with 1-3 children. For larger sized families and people travelling alone, survival chances do not seem to be great. Because it seems like larger family sizes do not do well, we are grouping them.
+
+# Missing Values
+
+### Age 
+
+```{r}
+missing_row_age <- which(is.na(titanic$Age))
+
+for (i in unique(titanic$titles)) {
+  titanic[missing_row_age, "Age"][titanic[missing_row_age, "titles"] == i] <- median(subset(titanic, titles == i)$Age, na.rm = TRUE)
+}
+```
+
+### Embarked
+
+```{r}
+ggplot(titanic[1:891, ], aes(x = Embarked, fill = Survived)) +
+  geom_bar() +
+  scale_fill_manual(
+    name = "Survived",
+    values = c("red", "blue"),
+    labels = c("No", "Yes"),
+    breaks = c("0", "1")
+  ) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ggtitle("Most people got on in Southampton")
+
+titanic$Embarked[titanic$Embarked == ""] <- "S"
+```
+
+```{r include=FALSE}
+ggsave(here::here("figs", "embarked.jpeg"), width = 8)
+```
+
+
+### Fare
+
+```{r results="asis"}
+titanic[is.na(titanic$Fare), ] %>%
+  dplyr::select(., Age, Fare, Name, Pclass, titles, Embarked) %>%
+  pander::pandoc.table(., split.table = Inf)
+titanic$Fare[is.na(titanic$Fare)] <- median(subset(titanic, Pclass == "3")$Fare, na.rm = TRUE)
+```
+
+# Model Building
+
+### Logistic Regression
+
+```{r}
+model <- glm(Survived ~ Pclass + titles + Fare + Parch + SibSp + Embarked + Age + Sex + family_size, family = "binomial", data = titanic[1:891, ])
+summary(model)
+car::vif(model)
+
+
+
+predictTest <- predict(model, type = "response", newdata = titanic[892:1309, ])
+titanic[892:1309, ]$Survived <- as.numeric(predictTest >= 0.5)
+
+Predictions <- data.frame(titanic[892:1309, ][c("PassengerId", "Survived")])
+write.csv(Predictions, file = here::here("docs", "Logit_multicollinearity.csv"), row.names = FALSE)
+```
+
+```{r echo = FALSE, fig.align='center', out.width = "800px"}
+glm_multicollinearity <- here::here("figs/glm_multicollinearity.png")
+knitr::include_graphics(glm_multicollinearity)
+```
+
+```{r}
+model_NoSex <- glm(Survived ~ Pclass + titles + Fare + Parch + SibSp + Embarked + Age, family = "binomial", data = titanic[1:891, ])
+car::vif(model_NoSex)
+summary(model_NoSex)
+
+predictTest <- predict(model_NoSex, type = "response", newdata = titanic[892:1309, ])
+titanic[892:1309, ]$Survived <- as.numeric(predictTest >= 0.5)
+
+Predictions <- data.frame(titanic[892:1309, ][c("PassengerId", "Survived")])
+write.csv(Predictions, file = here::here("docs", "Logit_nocollinearity_submission"), row.names = FALSE)
+```
+
+```{r echo = FALSE, fig.align='center', out.width = "800px"}
+glm_nomulticollinearity <- here::here("figs/glm_nomulticollinearity.png")
+knitr::include_graphics(glm_nomulticollinearity)
+```
+
+# Random Forest
+
+```{r}
+randomForest_model <- randomForest(Survived ~ Pclass + Age + SibSp + Parch +
+  Fare + Embarked + titles +
+  family_size + Sex,
+ntree = 1000,
+data = titanic[1:891, ]
+)
+```
+
+```{r}
+importance <- importance(randomForest_model)
+var_importance <- data.frame(
+  variables = row.names(importance),
+  importance = round(importance[, "MeanDecreaseGini"], 2)
+)
+
+rank_importance <- var_importance %>%
+  mutate(rank = paste0("#", dense_rank(desc(importance))))
+
+ggplot(rank_importance, aes(
+  x = reorder(variables, importance),
+  y = importance, fill = importance
+)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(x = variables, y = 0.5, label = rank),
+    hjust = 0, vjust = 0.55, size = 4, colour = "white"
+  ) +
+  labs(x = "Variables") +
+  coord_flip()
+```
+
+```{r include=FALSE}
+ggsave(here::here("figs", "randomForest.jpeg"), width = 8)
+```
+
+```{r}
+prediction <- predict(randomForest_model, titanic[892:1309, ])
+
+# Save the solution to a dataframe with two columns: PassengerId and Survived (prediction)
+solution <- data.frame(PassengerID = titanic[892:1309, ]$PassengerId, Survived = prediction)
+
+# Write the solution to file
+write.csv(solution, file = here::here("docs", "random_forest_submission.csv"), row.names = F)
+```
+
+```{r echo = FALSE, fig.align='center', out.width = "800px"}
+random_forest_submission <- here::here("figs/random_forest_submission.png")
+knitr::include_graphics(random_forest_submission)
+```
+
+# Linear Discriminant Analysis
+
+```{r}
+model <- MASS::lda(Survived ~ Pclass + titles + Fare + family_size + Parch + SibSp + Embarked + Age + Sex, data = titanic[1:891, ])
+```
+
+```{r}
+predictTest <- predict(model, type = "response", newdata = titanic[892:1309, ])
+Predictions <- data.frame(titanic[892:1309, ]$PassengerId, Survived = predictTest$class)
+write.csv(Predictions, file = here::here("docs", "lda_submission.csv"), row.names = FALSE)
+```
+
+
+```{r echo = FALSE, fig.align='center', out.width = "800px"}
+lda_submission <- here::here("figs/lda_submission.png")
+knitr::include_graphics(lda_submission)
+```
+
+### KNN
+
+```{r}
+for (i in names(titanic)) {
+  if (is.factor(titanic[, i])) {
+    titanic[, i] <- as.double(titanic[, i])
+  } else if (is.character(titanic[, i])) {
+    titanic <- dplyr::select(titanic, -i)
+  }
+}
+
+titanic$Survived <- as.factor(titanic$Survived)
+titanic <- titanic[, -1]
+titanic_scaled <- scale(titanic[, -1])
+
+trControl <- trainControl(
+  method = "cv",
+  number = 5
+)
+fit <- train(Survived ~ .,
+  method = "knn",
+  tuneGrid = expand.grid(k = 1:10),
+  trControl = trControl,
+  metric = "Accuracy",
+  data = titanic[1:891, ]
+)
+plot(fit)
+```
+
+```{r include=FALSE}
+jpeg(here::here("figs", "caret_knn_best_neighbors.jpeg"))
+plot(fit)
+dev.off()
+```
+
+```{r}
+knn_predictions <- class::knn(titanic_scaled[1:891, -1], titanic_scaled[892:1309, -1], titanic[1:891, ]$Survived, k = 7)
+knn_predictions <- ifelse(knn_predictions == 1, 0, 1)
+
+Predictions <- data.frame(PassengerId = 892:1309, Survived = knn_predictions)
+write.csv(Predictions, file = here::here("docs", "knn.csv"), row.names = FALSE)
+```
+
+```{r echo = FALSE, fig.align='center', out.width = "800px"}
+knn_submission <- here::here("figs/knn_submission.png")
+knitr::include_graphics(knn_submission)
+```
