@@ -1,0 +1,138 @@
+PackratFormat: 1.4
+PackratVersion: 0.4.9.12
+RVersion: 3.4.3
+Repos: CRAN=https://cran.rstudio.com/,
+    CRANextra=http://www.stats.ox.ac.uk/pub/RWin
+
+Package: Rcpp
+Source: CRAN
+Version: 0.12.17
+Hash: d2eff4634ccd7aca030c540ad805ac4a
+
+Package: backports
+Source: CRAN
+Version: 1.1.2
+Hash: 5ae7b3466e529e4400951ca18c137e40
+
+Package: base64enc
+Source: CRAN
+Version: 0.1-3
+Hash: c590d29e555926af053055e23ee79efb
+
+Package: digest
+Source: CRAN
+Version: 0.6.15
+Hash: 1f202ebd812ac7192be3739245746a13
+
+Package: evaluate
+Source: CRAN
+Version: 0.10.1
+Hash: 54d95f4ec6d0300100413ed0127d89ae
+Requires: stringr
+
+Package: glue
+Source: CRAN
+Version: 1.2.0
+Hash: 381e42baedecc633c0e547a0c7ca9de7
+
+Package: here
+Source: CRAN
+Version: 0.1
+Hash: 90e1a97508a0d7383b0eeb11e397e763
+Requires: rprojroot
+
+Package: highr
+Source: CRAN
+Version: 0.7
+Hash: 20757f5c393ed0ecf96c9e8e6d8d514c
+
+Package: htmltools
+Source: CRAN
+Version: 0.3.6
+Hash: b24df7ea0856eab6618f6a56016d940d
+Requires: Rcpp, digest
+
+Package: jsonlite
+Source: CRAN
+Version: 1.5
+Hash: 9c51936d8dd00b2f1d4fe9d10499694c
+
+Package: knitr
+Source: CRAN
+Version: 1.20
+Hash: 9c6b215d1d02b97586c8232e94533e6a
+Requires: evaluate, highr, markdown, stringr, yaml
+
+Package: magrittr
+Source: CRAN
+Version: 1.5
+Hash: bdc4d48c3135e8f3b399536ddf160df4
+
+Package: markdown
+Source: CRAN
+Version: 0.8
+Hash: 045d7c594d503b41f1c28946d076c8aa
+Requires: mime
+
+Package: mime
+Source: CRAN
+Version: 0.5
+Hash: 463550cf44fb6f0a2359368f42eebe62
+
+Package: packrat
+Source: github
+Version: 0.4.9-12
+Hash: f3a87fde7eca2191e4fbb2b06d3583d2
+GithubRepo: packrat
+GithubUsername: rstudio
+GithubRef: master
+GithubSha1: cea6c235c335b31bd6d3f373ea1e9e29397eff0e
+RemoteHost: https://api.github.com
+RemoteRepo: packrat
+RemoteUsername: rstudio
+RemoteSha: cea6c235c335b31bd6d3f373ea1e9e29397eff0e
+
+Package: plotrix
+Source: CRAN
+Version: 3.7-3
+Hash: 65403ba17e0c4cb5a736e2708b75d201
+
+Package: rmarkdown
+Source: CRAN
+Version: 1.10
+Hash: 02f1aac33000c63986c6b5585e36e7ae
+Requires: base64enc, evaluate, htmltools, jsonlite, knitr, mime,
+    rprojroot, stringr, tinytex, yaml
+
+Package: rprojroot
+Source: CRAN
+Version: 1.3-2
+Hash: a25c3f70c166fb3fbabc410eb32b6366
+Requires: backports
+
+Package: stringi
+Source: CRAN
+Version: 1.1.7
+Hash: d3dbb18da9a7b73a5b59416e33ad2cbd
+
+Package: stringr
+Source: CRAN
+Version: 1.3.1
+Hash: 9f417a1d899ed1f080942ab36998e8b5
+Requires: glue, magrittr, stringi
+
+Package: tinytex
+Source: CRAN
+Version: 0.6
+Hash: a149d4e6a2f7d6422e063a19cca52bb9
+Requires: xfun
+
+Package: xfun
+Source: CRAN
+Version: 0.3
+Hash: 3b1cb5fdcfb96c88e3f9ab0239fbd048
+
+Package: yaml
+Source: CRAN
+Version: 2.1.19
+Hash: 6e3d988c25e34c31f668e0ae41dc3259
