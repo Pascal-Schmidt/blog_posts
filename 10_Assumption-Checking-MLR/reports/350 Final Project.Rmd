@@ -1,0 +1,404 @@
+---
+title: "STAT 350 Final Project"
+author: 'null'
+date: "March 12, 2018"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r message = FALSE, results='hide', warning=FALSE}
+library(dplyr)
+library(gapminder)
+library(leaps)
+library(glmnet)
+library(ggplot2)
+library(MASS)
+library(usdm)
+library(car)
+library(corrplot)
+library(texreg)
+library(xtable)
+library(stargazer)
+library(MPV)
+```
+
+```{r}
+data("gapminder")
+gap.2002 <- filter(gapminder, year == 2002)
+gap.2007 <- filter(gapminder, year == 2007)
+gap.2002 <- rename(gap.2002, Country = country)
+gap.2007 <- rename(gap.2007, Country = country)
+```
+
+```{r}
+lifeExp <- read.csv(here::here("docs", "life_expect.csv"))
+lifeExp.2002 <- filter(lifeExp, Year == 2002)
+lifeExp.2007 <- filter(lifeExp, Year == 2007)
+```
+
+```{r}
+gapExp.2002 <- merge(lifeExp.2002, gap.2002, by = "Country")
+gapExp.2007 <- merge(lifeExp.2007, gap.2007, by = "Country")
+gapExp <- rbind(gapExp.2002, gapExp.2007)
+```
+
+```{r}
+gapExp <- dplyr::select(gapExp, -c(Year, year, Life.expectancy, Population, GDP, Country, Hepatitis.B, Income.composition.of.resources))
+gapExp <- na.omit(gapExp)
+```
+
+We are omitting the duplicate variables from the model and also the Hepatitis.B variable from the model due to too many missing variables.  
+
+```{r}
+gapExp.muu = dplyr::select(gapExp, -c(Status, continent))
+data.frame(Variables = colnames(gapExp.muu))
+```
+
+```{r}
+all.reg <- lm(lifeExp ~. -continent -Status,data = gapExp)
+summary(all.reg)
+plot(all.reg)
+sum(resid(all.reg))
+dim(gapExp)
+```
+
+
+At first glance, our model with all the variables included looks pretty decent. We have a high a r-squared and high adjsuted r-squared. However, this is kind of expected with so many variables in the model. The qqplot looks really good. The assumption of normality holds in the model. However, the assumption of constant variance is violated. We can see in the right hand side of the plot, the red line swings up and then down which indicates non constant variance. A problem, we have to address with transformations and variable selection. 
+
+
+
+Assumption Checking
+----------------------
+
+- Check Multicollinearity in the model
+---------------------------------------
+
+```{r warning=F, message=FALSE}
+vif.1 <- usdm::vif(gapExp)
+vif.1
+```
+
+We really have a problem with the infant.deaths variable and also the under.five.deaths variable. Both of these variables have a variance inflation factor of above 10 which indicates a problem with multicollinearity in the model. Therefore, we want to try to center the data first and then have a look again at the variance inflation factor. 
+
+```{r}
+centre <- function(x) { x - mean(x)}
+gapExp.centered <- data.frame(gapExp, infant.deaths = centre(gapExp$infant.deaths), under.five.deaths = centre(gapExp$under.five.deaths))
+```
+
+```{r warning=FALSE, message=FALSE}
+gapExp.centered <- dplyr::select(gapExp.centered, -c(under.five.deaths, infant.deaths))
+usdm::vif(gapExp.centered)
+```
+
+Unfortunately, the centering did not help to bring the variance inflation factor down. So we are trying now to remove the under.five.deaths variable from the data frame in order to hope that the variance inflation factor for infant.deaths decreases. 
+
+```{r warning=FALSE, message=FALSE}
+gapExp.centered <- dplyr::select(gapExp.centered, -under.five.deaths.1)
+```
+
+By removing the under.five,deaths variable, we could bring the variance inflation factor of infant.deaths down and all variables have now a variance inflation factor of an acceptable range. 
+
+```{r warning=FALSE}
+gapExp <- dplyr::select(gapExp, -under.five.deaths)
+usdm::vif(gapExp)
+```
+
+Normalization of Predictors
+-----------------------------
+
+
+- HIV.AIDS
+-----------
+
+```{r}
+ggplot(gapExp, aes(x = HIV.AIDS , y = lifeExp, col = continent)) + geom_point() + geom_smooth(method = "lm", formula= y ~ log(x),  se = F, aes(group = 1), col = "black") + theme_minimal()
+```
+
+```{r}
+ggplot(gapExp, aes(x = log(HIV.AIDS + 1) , y = lifeExp, col = continent)) + geom_point() + geom_smooth(method = "lm", formula= y ~ x,  se = F, aes(group = 1), col = "black") + theme_minimal()
+```
+
+
+- gdpPercap
+-----------
+
+```{r}
+ggplot(gapExp, aes(x = gdpPercap , y = lifeExp, col = continent)) + geom_point() + geom_smooth(method = "lm", formula = y ~ log(x), aes(group = 1), col = "black", se = F) + theme_minimal()
+```
+
+```{r}
+ggplot(gapExp, aes(x = log(gdpPercap) , y = lifeExp, col = continent)) + geom_point() + geom_smooth(method = "lm", formula = y ~ x, aes(group = 1), col = "black", se = F) + theme_minimal()
+```
+
+
+- pop
+------
+
+```{r}
+ggplot(gapExp, aes(x = pop , y = lifeExp, col = continent)) + geom_point() + geom_smooth(method = "lm", aes(group = 1), col = "black", se = F) + theme_minimal()
+```
+
+```{r}
+ggplot(gapExp, aes(x = log(pop) , y = lifeExp, col = continent)) + geom_point() + geom_smooth(method = "lm", aes(group = 1), col = "black", se = F) + theme_minimal()
+```
+
+
+- infant.deaths
+----------------
+
+```{r}
+ggplot(gapExp, aes(x = infant.deaths , y = lifeExp, col = continent)) + geom_point() + geom_smooth(method = "lm", aes(group = 1), col = "black", se = F)
+ggplot(gapExp, aes(x = log(infant.deaths + 1) , y = lifeExp, col = continent)) + geom_point() + geom_smooth(method = "lm", aes(group = 1), col = "black", se = F)
+```
+
+```{r}
+N <- cor(gapExp[, c(3, 6, 11, 16, 17, 18)])[4, c(1:3, 5, 6), drop = F]
+corrplot(N, method = "number", cl.pos = "n")
+```
+
+- log Transforming Variables (HIV.AIDS, gdpPercap, pop, Measles, and infant.deaths)
+--------------------------------------------------------------------------------------
+
+```{r}
+gapExp$lHIV.AIDS <- log(gapExp$HIV.AIDS + 1)
+gapExp$lgdpPercap <- log(gapExp$gdpPercap)
+gapExp$lpop <- log(gapExp$pop)
+gapExp$lMeasles <- log(gapExp$Measles + 1)
+gapExp$linfant.deaths <- log(gapExp$infant.deaths + 1)
+gapExp <- dplyr::select(gapExp, -c(HIV.AIDS, gdpPercap, pop, Measles, infant.deaths))
+```
+
+The variables Adult.Mortality, Alcohol, BMI, Schooling, Total.expenditure, Income.composition.of.resources, and percentage.expenditure seem to have a roughly linear relationship with the response variable life expectancy. At this point, we believe that no transformations are needed for these variables. 
+
+```{r}
+M <- cor(gapExp[, 13:18])[1, 2:6, drop = FALSE]
+corrplot(M, method = "number", cl.pos = "n")
+```
+
+
+Not only based on our visualizations, but also based on our correlations, we can conlcude that the transformations were responsible for higher corelations between the response variable and HIV.AIDS, gdpPercap, Measles, and infant.deaths.Therefore, we keep these variables log transformed. The correlation between pop and lifeExp stayed roughly the same. However, based on the visualization we are deciding to keep the pop variable log transformed. 
+
+
+Polynomial Terms for the variables thinness..1.19.years and thinness.5.9.years, Diphtheria, and Polio seems appropriate
+-------------------------------------------------------------------------------------------------------------------------
+
+```{r}
+ggplot(gapExp, aes(x = thinness..1.19.years, y = lifeExp, col = continent)) + geom_point() + geom_smooth(method = "lm", formula = y ~ poly(x, 2), aes(group = 1), col = "black", se = F) + theme_minimal()
+
+ggplot(gapExp, aes(x = thinness.5.9.years, y = lifeExp, col = continent)) + geom_point() + geom_smooth(method = "lm", formula = y ~ poly(x, 2), aes(group = 1), col = "black", se = F) + theme_minimal()
+
+ggplot(gapExp, aes(x = Polio, y = lifeExp, col = continent)) + geom_point() + geom_smooth(method = "lm", formula = y ~ poly(x, 2), aes(group = 1), col = "black", se = F) + theme_minimal()
+
+ggplot(gapExp, aes(x = Diphtheria, y = lifeExp, col = continent)) + geom_point() + geom_smooth(method = "lm", formula = y ~ poly(x, 2), aes(group = 1), col = "black", se = F) + theme_minimal()
+```
+
+```{r}
+a <- lm(lifeExp ~ Adult.Mortality + Alcohol + percentage.expenditure + BMI + poly(Polio, 2) + Total.expenditure + poly(Diphtheria, 2) + poly(thinness..1.19.years, 2) + poly(thinness.5.9.years, 2) + Schooling + lHIV.AIDS + lgdpPercap + lpop + lMeasles + linfant.deaths, data = gapExp)
+summary(a)
+plot(a)
+car::vif(a)
+```
+
+```{r}
+centre <- function(x) { x - mean(x)}
+gapExp.centered <- data.frame(gapExp, Polio = centre(gapExp$Polio), Diphtheria = centre(gapExp$Diphtheria), thinness..1.19.years = centre(gapExp$thinness..1.19.years), thinness.5.9.years = centre(gapExp$thinness.5.9.years))
+```
+
+```{r}
+transformed.reg2 <- lm(lifeExp ~ Adult.Mortality + Alcohol + percentage.expenditure + BMI + poly(Polio, 2) + Total.expenditure + poly(Diphtheria, 2) + poly(thinness..1.19.years, 2) + poly(thinness.5.9.years, 2) + Schooling + lHIV.AIDS + lgdpPercap + lpop + lMeasles + linfant.deaths, data = gapExp.centered)
+summary(transformed.reg2)
+plot(transformed.reg2)
+vif(transformed.reg2)
+```
+
+```{r}
+back <- regsubsets(lifeExp ~ Adult.Mortality + Alcohol + percentage.expenditure + BMI + poly(Polio, 2) + Total.expenditure + poly(Diphtheria, 2) + poly(thinness..1.19.years, 2) + poly(thinness.5.9.years, 2) + Schooling + lHIV.AIDS + lgdpPercap + lpop + lMeasles + linfant.deaths, data = gapExp, method = "backward")
+plot(back, scale = "Cp")
+
+mo <- lm(lifeExp ~ Alcohol + thinness..1.19.years + thinness.5.9.years + lHIV.AIDS + lgdpPercap + lpop + lMeasles + linfant.deaths, data = gapExp)
+summary(mo)
+car::vif(mo)
+plot(mo)
+extractAIC(mo)
+plot(back, scale = "Cp")
+```
+```{r}
+PRESS(mo)
+```
+
+
+```{r}
+back <- regsubsets(lifeExp ~ Adult.Mortality + Alcohol + percentage.expenditure + BMI + poly(Polio, 2) + Total.expenditure + poly(Diphtheria, 2) + poly(thinness..1.19.years, 2) + poly(thinness.5.9.years, 2) + Schooling + lHIV.AIDS + lgdpPercap + lpop + lMeasles, data = gapExp, method = "backward")
+plot(back, scale = "Cp")
+```
+
+```{r}
+final.model <- lm(lifeExp ~ Adult.Mortality + poly(Diphtheria, 2) + thinness..1.19.years + thinness.5.9.years + Schooling + lHIV.AIDS + lgdpPercap, data = gapExp)
+summary(final.model)
+plot(final.model)
+# options(scipen=999)
+sum(resid(final.model))
+vif(final.model)
+extractAIC(final.model)
+```
+
+```{r}
+PRESS(final.model)
+subset(studres(final.model), abs(studres(final.model)) > 3)
+```
+
+```{r}
+subset(cooks.distance(final.model), abs(cooks.distance(final.model)) > 0.1)
+```
+
+
+
+
+Final Model with Removed Outliers
+-----------------------------------
+
+```{r}
+final.model.noOutlier <- lm(lifeExp ~ Adult.Mortality + poly(Diphtheria, 2) + thinness..1.19.years + thinness.5.9.years + Schooling + lHIV.AIDS + lgdpPercap, data = gapExp[-c(1, 4, 122, 125, 223), ])
+summary(final.model.noOutlier)
+plot(final.model.noOutlier)
+# options(scipen=999)
+sum(resid(final.model.noOutlier))
+vif(final.model.noOutlier)
+extractAIC(final.model.noOutlier)
+PRESS(final.model.noOutlier)
+```
+
+```{r}
+step(final.model.noOutlier)
+final.model.noOutlier.2 <- lm(lifeExp ~ Adult.Mortality + poly(Diphtheria, 2) + thinness..1.19.years + Schooling + lHIV.AIDS + lgdpPercap, data = gapExp[-c(1, 4, 122, 125, 223), ])
+subset(studres(final.model.noOutlier.2), abs(studres(final.model.noOutlier.2)) > 3)
+```
+
+After removing the outliers, our AIC value drops by a lot and our press statistic drops by a lot as well. Thinness.5.9.years drops from being statistically significant at a 0.1% level to being statistically significant at a 1% level. The stepwise selection method suggests, that thinness.5.9.years can be removed from the model.
+
+```{r}
+final.model.noOutlier <- lm(lifeExp ~ Adult.Mortality + poly(Diphtheria, 2) + thinness..1.19.years + Schooling + lHIV.AIDS + lgdpPercap, data = gapExp[-c(1, 4, 122, 125, 223), ])
+xtable(summary(final.model.noOutlier))
+plot(final.model.noOutlier)
+# options(scipen=999)
+sum(resid(final.model.noOutlier))
+vif(final.model.noOutlier)
+extractAIC(final.model.noOutlier)
+PRESS(final.model.noOutlier)
+```
+
+
+
+The Lasso
+----------
+
+```{r}
+data("gapminder")
+gap.2002 <- filter(gapminder, year == 2002)
+gap.2007 <- filter(gapminder, year == 2007)
+gap.2002 <- rename(gap.2002, Country = country)
+gap.2007 <- rename(gap.2007, Country = country)
+```
+
+```{r}
+lifeExp <- read.csv("expect.csv")
+lifeExp.2002 <- filter(lifeExp, Year == 2002)
+lifeExp.2007 <- filter(lifeExp, Year == 2007)
+```
+
+```{r}
+gapExp.2002 <- merge(lifeExp.2002, gap.2002, by = "Country")
+gapExp.2007 <- merge(lifeExp.2007, gap.2007, by = "Country")
+gapExp <- rbind(gapExp.2002, gapExp.2007)
+```
+
+```{r}
+gapExp <- dplyr::select(gapExp, -c(Year, year, Life.expectancy, Population, GDP, Country, Hepatitis.B, Income.composition.of.resources))
+gapExp <- na.omit(gapExp)
+```
+
+```{r}
+Xfull <- model.matrix(lifeExp ~ .-continent- -Status, data=gapExp)
+Xfull <- Xfull[, -1]
+```
+
+```{r}
+Y <- gapExp$lifeExp
+```
+
+```{r}
+lambdas <- 10^{seq(from=-2,to=5,length=100)}
+lafit <- glmnet(Xfull,Y,alpha=1,lambda=lambdas)
+plot(lafit,xvar="lambda")
+```
+
+```{r}
+cv.rrfit <- cv.glmnet(Xfull,Y,alpha=1,lambda=lambdas)
+plot(cv.rrfit)
+```
+
+```{r}
+rr.best.lam <- cv.rrfit$lambda.1se
+rr.best.lam
+rr.best <- glmnet(Xfull,Y,alpha=1,lambda=rr.best.lam)
+# options(scipen=999)
+coef(rr.best)
+```
+
+The Lasso without Transformations
+----------------------------------
+
+```{r}
+options(scipen = 0)
+Lasso.lm <- lm(lifeExp ~ Adult.Mortality + BMI + Polio + Diphtheria + HIV.AIDS + thinness..1.19.years + Schooling + gdpPercap, data = gapExp)
+summary(Lasso.lm)
+plot(Lasso.lm)
+PRESS(Lasso.lm)
+vif(Lasso.lm)
+extractAIC(Lasso.lm)
+```
+
+The Lasso with Transformated Variables
+----------------------------------------
+
+```{r}
+gapExp$lHIV.AIDS <- log(gapExp$HIV.AIDS + 1)
+gapExp$lgdpPercap <- log(gapExp$gdpPercap)
+gapExp <- dplyr::select(gapExp, -c(HIV.AIDS, gdpPercap, pop, Measles, infant.deaths))
+```
+
+
+```{r}
+Lasso.2 <- lm(lifeExp ~ Adult.Mortality + BMI + Polio + poly(Diphtheria, 2) + lHIV.AIDS + thinness..1.19.years + Schooling + lgdpPercap, data = gapExp)
+summary(Lasso.2)
+step(Lasso.2)
+PRESS(Lasso.2)
+extractAIC(Lasso.2)
+```
+
+```{r}
+Lasso.best <- lm(formula = lifeExp ~ Adult.Mortality + poly(Diphtheria, 2) + lHIV.AIDS + thinness..1.19.years + Schooling + lgdpPercap, data = gapExp)
+(summary(Lasso.best))
+PRESS(Lasso.best)
+plot(Lasso.best)
+vif(Lasso.best)
+extractAIC(Lasso.best)
+```
+
+
+```{r}
+anova(Lasso.best, final.model)
+```
+
+
+
+
+
+
+
+
+
+
+
+
