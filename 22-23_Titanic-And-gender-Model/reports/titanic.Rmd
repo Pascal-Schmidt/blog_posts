@@ -544,7 +544,7 @@ Predictions <- data.frame(PassengerId = 892:1309, Survived = knn_predictions)
 write.csv(Predictions, file = here::here("docs", "knn.csv"), row.names = FALSE)
 ```
 
-```{r echo = FALSE, fig.align='center', out.width = "800px"}
+```{r fig.align='center', out.width = 800px}
 knn_submission <- here::here("reports/titanic_files/figure-markdown_github/knn_submission.png")
 knitr::include_graphics(knn_submission)
 ```
