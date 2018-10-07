@@ -7,3 +7,5 @@ output: github_document
 
 
 ![](bias.jpeg)
+
+![](b/bias.jpeg)
