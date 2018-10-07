@@ -773,4 +773,4 @@ knitr::include_graphics("C:/Users/Pascal%20Schmidt/Desktop/blog_posts/22-23_Tita
 
 ![](blog_posts/22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png)
 
-![](22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png)
+![](reports/titanic_files/figure-markdown_github/knn_submission.png)
