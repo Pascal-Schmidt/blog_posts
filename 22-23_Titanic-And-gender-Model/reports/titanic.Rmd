@@ -2,7 +2,7 @@
 title: "Titanic"
 author: "Pascal Schmidt"
 date: "August 26, 2018"
-output: html_document
+output: github_document
 ---
 
 The Titanic data set is said to be the starter for every aspiring data scientist. So it was that I sat down two years ago, after having taken an econometrics course in university which introduced me to R, thinking to give the competition a shot. My goal was to achieve an accuracy of 80% or higher. Boy was I wrong! 
@@ -545,6 +545,6 @@ write.csv(Predictions, file = here::here("docs", "knn.csv"), row.names = FALSE)
 ```
 
 ```{r echo = FALSE, fig.align='center', out.width = "800px"}
-knn_submission <- here::here("figs/knn_submission.png")
+knn_submission <- here::here("reports/titanic_files/figure-markdown_github/knn_submission.png")
 knitr::include_graphics(knn_submission)
 ```

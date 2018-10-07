@@ -2,7 +2,7 @@
 title: "Gender Model"
 author: "Pascal Schmidt"
 date: "September 23, 2018"
-output: html_document
+output: github_document
 ---
 
 In this tutorial, I will be showing you how to achieve 82% accuracy with the titanic women-child model.
