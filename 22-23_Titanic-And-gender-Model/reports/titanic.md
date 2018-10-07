@@ -760,4 +760,15 @@ Predictions <- data.frame(PassengerId = 892:1309, Survived = knn_predictions)
 write.csv(Predictions, file = here::here("docs", "knn.csv"), row.names = FALSE)
 ```
 
-<img src="C:/Users/Pascal Schmidt/Desktop/blog_posts/22-23_Titanic-And-gender-Model/figs/knn_submission.png" width="800px" style="display: block; margin: auto;" />
+``` r
+knn_submission <- here::here("reports/titanic_files/figure-markdown_github/knn_submission.png")
+knitr::include_graphics("C:/Users/Pascal%20Schmidt/Desktop/blog_posts/22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png")
+```
+
+<img src="C:/Users/Pascal%20Schmidt/Desktop/blog_posts/22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png" width="800px" style="display: block; margin: auto;" />
+
+![](C:/Users/Pascal%20Schmidt/Desktop/blog_posts/22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png?raw=true)
+
+![](C:/Users/Pascal%20Schmidt/Desktop/blog_posts/22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png?raw=true)
+
+![](C:/Users/Pascal%20Schmidt/Desktop/blog_posts/22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png?raw=true)
