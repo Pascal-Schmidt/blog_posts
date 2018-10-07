@@ -549,4 +549,8 @@ knn_submission <- here::here("reports/titanic_files/figure-markdown_github/knn_s
 knitr::include_graphics("C:/Users/Pascal%20Schmidt/Desktop/blog_posts/22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png")
 ```
 
-![]("C:/Users/Pascal Schmidt/Desktop/blog_posts/22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png")
+![](C:/Users/Pascal Schmidt/Desktop/blog_posts/22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png)
+
+![](C:/Users/Pascal%20Schmidt/Desktop/blog_posts/22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png)
+
+![](C:/Users/Pascal%20Schmidt/Desktop/blog_posts/22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png?raw=true)
