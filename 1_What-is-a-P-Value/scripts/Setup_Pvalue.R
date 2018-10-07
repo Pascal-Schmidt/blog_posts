@@ -1,3 +1,4 @@
+library(plotrix)
 weight_distribution <- c(1.90e+2,
                          2.80e+2,
                          2.40e+2,
@@ -20,5 +21,5 @@ weight_distribution <- c(1.90e+2,
                          1.77e+2)
 
 mean_weight <- mean(weight_distribution) # 222.935
-std.err_weight <- std.error(weight_distribution) # 11.99436
+std.err_weight <- plotrix::std.error(weight_distribution) # 11.99436
 

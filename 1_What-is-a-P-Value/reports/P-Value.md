@@ -1,22 +1,20 @@
----
-title: "What is a P-Value"
-author: "Pascal Schmidt"
-date: "January 22, 2018"
-output: github_document
----
+What is a P-Value
+================
+Pascal Schmidt
+January 22, 2018
 
 In all introductory statistics courses, p-values are easily calculated and reported. But was is a p-value really? A p-value is rarely understood properly, despite its common use in hypothesis testing. So, in this doument, I will try my best to remove common misunderstandings and will try to actually answer the question: "what is a p-value".
 
-This blog post got greatly inspired by [this](http://blog.minitab.com/blog/adventures-in-statistics-2/understanding-hypothesis-tests-significance-levels-alpha-and-p-values-in-statistics) phenomenal post about p-values. 
+This blog post got greatly inspired by [this](http://blog.minitab.com/blog/adventures-in-statistics-2/understanding-hypothesis-tests-significance-levels-alpha-and-p-values-in-statistics) phenomenal post about p-values.
 
 What we are going to cover:
 
-* Definition of a p-value
-* Explaining the p-value in terms of hypothesis testing
-* Show you visualizations to easily make you understand a p-value
-* Interpretation of a p-value
-* Common misconceptions
-* Concluding thoughts on a p-value
+-   Definition of a p-value
+-   Explaining the p-value in terms of hypothesis testing
+-   Show you visualizations to easily make you understand a p-value
+-   Interpretation of a p-value
+-   Common misconceptions
+-   Concluding thoughts on a p-value
 
 ### Definition of a p-value
 
@@ -24,10 +22,15 @@ A p-value is the probability of observing a test statistic as extreme or more ex
 
 Has this definition answered your question of "What is a p-value"? Probably not and I have to admit the definition is quite confusing. But well, at least we know now that it is a probability. So, let’s illustrate what it means with an example.
 
-First, we need some data 
+First, we need some data
 
-```{r}
+``` r
 library(plotrix)
+```
+
+    ## Warning: package 'plotrix' was built under R version 3.4.4
+
+``` r
 source(here::here("scripts/Setup_Pvalue.R"))
 
 # calculating critical values
@@ -35,10 +38,9 @@ critical_region_two <- qt(c(.025, .975), df = 19)
 critical_region_one <- qt(0.95, df = 19)
 ```
 
-
 ### Two Tailed Critical Region for a Significance Level of 0.05
 
-```{r}
+``` r
 deg_free <- length(weight_distribution) - 1
 x <- seq(from = -4, to = 4, length.out = 1000)
 y <- dt(x, df = deg_free)
@@ -72,9 +74,11 @@ t_test <- t.test(weight_distribution, mu = 200, alternative = "greater")
 abline(v = t_test$statistic[[1]], col = "blue", lwd = 2, lty = 3)
 ```
 
+![](P-Value_files/figure-markdown_github/unnamed-chunk-2-1.png)
+
 ### One Tailed Critical Region for a Significance Level of 0.05
 
-```{r}
+``` r
 x <- seq(from = -4, to = 4, length.out = 1000)
 y <- dt(x, df = deg_free)
 
@@ -98,10 +102,11 @@ text(2.5, 0.375, paste0(mean_weight, " lb"), col = "blue")
 abline(v = t_test$statistic[[1]], col = "blue", lwd = 2, lty = 3)
 ```
 
+![](P-Value_files/figure-markdown_github/unnamed-chunk-3-1.png)
 
 ### The P-Value for our sample
 
-```{r}
+``` r
 x <- seq(from = -4, to = 4, length.out = 1000)
 y <- dt(x, df = deg_free)
 
@@ -125,10 +130,11 @@ text(2.5, 0.375, paste0(mean_weight, " lb"), col = "blue")
 abline(v = t_test$statistic[[1]], col = "blue", lwd = 2, lty = 3)
 ```
 
+![](P-Value_files/figure-markdown_github/unnamed-chunk-4-1.png)
 
 ### One Tailed Critical Region for a Significance Level of 0.01
 
-```{r}
+``` r
 critical_region <- qt(0.99, df = deg_free)
 
 x <- seq(from = -4, to = 4, length.out = 1000)
@@ -158,3 +164,4 @@ abline(v = critical_region, col = "black", lwd = 2, lty = 3)
 abline(v = t_test$statistic[[1]], col = "blue", lwd = 2, lty = 3)
 ```
 
+![](P-Value_files/figure-markdown_github/unnamed-chunk-5-1.png)
