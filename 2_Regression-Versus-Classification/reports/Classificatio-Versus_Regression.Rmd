@@ -50,7 +50,7 @@ For a multiclass classification, we have three or more classes for which we can 
 
 and many more.
 
-If you want to see logistic regression, linear discriminant analysis, k-nearest neighbors, and random forest in action, check out my titanic tutorial where I implemented these methods. Part 2 is here.
+If you want to see logistic regression, linear discriminant analysis, k-nearest neighbors, and random forest in action, check out my [titanic tutorial](http://thatdatatho.com/2018/09/18/titanic-data-set-increased-prediction-scores-82/) where I implemented these methods. Part 2 is [here](http://thatdatatho.com/2018/09/25/the-titanic-data-set-and-the-woman-child-model-82-test-set-accuracy/).
 
 ### Classification Versus Regression - Choosing a Machine Learning Algorithm
 
@@ -74,7 +74,7 @@ We are interested in regression when wanting to predict a quantitative response.
 
 and many more.
 
-Implementation of a multiple linear regreesion model can be found here, and for a lasso model here.
+Implementation of a multiple linear regreesion model can be found [here](http://thatdatatho.com/2018/04/30/multiple-linear-regression-model-building-r-tutorial/), and for a lasso model [here](http://thatdatatho.com/2018/05/07/the-lasso-r-tutorial-part-3/).
 
 ### Classification Versus Regression - Choosing a machine learning algorithm
 
