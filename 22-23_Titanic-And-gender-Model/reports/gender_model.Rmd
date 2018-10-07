@@ -219,9 +219,11 @@ write.csv(sub, here::here("docs", "gender_model.csv"), row.names = FALSE)
 ```
 
 ```{r echo = FALSE, fig.align='center', out.width = "800px"}
-gender_model_submission <- here::here("figs/gender_model_submission.png")
-knitr::include_graphics(gender_model_submission)
+# gender_model_submission <- here::here("gender_model_files/figure-markdown_github/gender_model_submission.png")
+# knitr::include_graphics(gender_model_submission)
 ```
+
+![](gender_model_files/figure-markdown_github/gender_model_submission.png)
 
 Heya! Almost 82%. That is fantastic. The women-child model is way less time consuming than all the model building in part. It is easy, straight forward but still very powerful. So powerful that it gives us around 3% better accuracy on the test set.
 

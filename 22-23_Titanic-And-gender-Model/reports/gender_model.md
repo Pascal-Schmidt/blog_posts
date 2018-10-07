@@ -325,7 +325,7 @@ for(i in 1:nrow(gender_mod)) {
 ```
 
     ##    user  system elapsed 
-    ##    4.22    0.00    4.30
+    ##    4.17    0.00    4.17
 
 So, if we want to save time we can also vectorize our operation like in the code below.
 
@@ -352,7 +352,7 @@ sub <- data.frame(PassengerId = 892:1309, Survived = titanic[892:1309, ]$Survive
 write.csv(sub, here::here("docs", "gender_model.csv"), row.names = FALSE)
 ```
 
-<img src="C:/Users/Pascal Schmidt/Desktop/blog_posts/22-23_Titanic-And-gender-Model/figs/gender_model_submission.png" width="800px" style="display: block; margin: auto;" />
+![](gender_model_files/figure-markdown_github/gender_model_submission.png)
 
 Heya! Almost 82%. That is fantastic. The women-child model is way less time consuming than all the model building in part. It is easy, straight forward but still very powerful. So powerful that it gives us around 3% better accuracy on the test set.
 
