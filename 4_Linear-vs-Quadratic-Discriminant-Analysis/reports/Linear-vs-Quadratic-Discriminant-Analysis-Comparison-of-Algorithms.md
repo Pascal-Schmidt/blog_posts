@@ -58,7 +58,7 @@ ggplot(df, aes(x = x)) +
 
 ![](Linear-vs-Quadratic-Discriminant-Analysis-Comparison-of-Algorithms_files/figure-markdown_github/unnamed-chunk-2-1.png)
 
-In this case, the decision boundary is the Bayes decision boundary and we can compute the Bayes classifier because we know that X is drawn from a normal distribution within each class. In addition to that we know all our parameters (*s**i**g**m**a*<sub>1</sub> = *σ*<sub>2</sub> = 1, *μ*<sub>1</sub> = -1 and *μ*<sub>2</sub> = 1, and *Π*<sub>1</sub> = 0.35 and *Π*<sub>2</sub> = 0.65).
+In this case, the decision boundary is the Bayes decision boundary and we can compute the Bayes classifier because we know that X is drawn from a normal distribution within each class. In addition to that we know all our parameters (*σ*<sub>1</sub> = *σ*<sub>2</sub> = 1, *μ*<sub>1</sub> = -1 and *μ*<sub>2</sub> = 1, and *Π*<sub>1</sub> = 0.35 and *Π*<sub>2</sub> = 0.65).
 
 In practice, we unfortunately cannot apply the Bayes classifier because we do not know if X is drawn from a normal distribution and we do not know our true population parameters. Therefore, we are tying to approximate the Bayes classifier with LDA and QDA. These two methods use the estimated $\\hat{\\mu}\_k$ (average of all training observations from the kth class), $\\hat{\\sigma}^2$ (weighted average of sample variances for each of the K classes), and $\\hat{\\Pi}\_k$ in the discriminant functions in order to assign an observation to a class.
 
