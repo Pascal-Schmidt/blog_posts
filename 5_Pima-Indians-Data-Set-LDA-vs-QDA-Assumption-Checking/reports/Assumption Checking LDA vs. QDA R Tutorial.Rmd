@@ -2,9 +2,7 @@
 title: "Assumption Checking LDA vs. QDA R Tutorial"
 author: "Pascal Schmidt"
 date: "January 5, 2018"
-output:
-  word_document: default
-  html_document: default
+output: github_document
 ---
 
 ```{r warning=FALSE, message=FALSE, results='hide'}
@@ -14,6 +12,8 @@ library(dplyr)
 library(gridExtra)
 library(here)
 ```
+
+![](Assumption_Checking_LDA_vs._QDA_R_Tutorial_files/figure-markdown_github/lda-qda-assumption-checking.jpeg)
 
 ```{r}
 # reading in the data
@@ -79,7 +79,7 @@ The three diferent boxplots show us that the length of each plot clearly differs
 
 We can examine further the assumption of homogeneity of variance covariance matrices by plotting covariance ellipses. 
 
-```{r warning=FALSE}
+```{r warning=FALSE, fig.height=6, fig.width=10}
 heplots::covEllipses(diabetes[,1:8], 
                      diabetes$Outcome, 
                      fill = TRUE, 
@@ -104,9 +104,9 @@ From this scatterplot, we can clearly see that the varaince for the diabetes gro
 
 We are using the BoxM test in order to check our assumption of homogeneity of variance-covariance matrices. 
 
-$$ H_o=\ Covariance\ matrices\ of\ the\ outcome\ variable\ are\ equal\ across\ all\ groups $$
+$H_o$ = Covariance matrices of the outcome variable are equal across all groups
 
-$$ H_a = Covariance\ matrices\ of\ the\ outcome\ variable\ are\ different\ for\ at\ least\ one\ group$$
+$H_a$ = Covariance matrices of the outcome variable are different for at least one group
 
 ```{r}
 boxm <- heplots::boxM(diabetes[, c(1:5, 8)], 
@@ -223,6 +223,6 @@ for(i in names(diabetes)[-9]){
 do.call(grid.arrange, c(plot, nrow = 4))
 ```
 
-From the plots above we can conclude, that a lot of distributions are right skewed and that the variance is often also different. 
+From the plots above we can conclude, that a lot of distributions are right skewed and that the variance is often also different. One way to deal with right-skewed distributions is to take the log of the variables. 
 
 
