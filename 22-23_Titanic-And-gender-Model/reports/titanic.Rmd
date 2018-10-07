@@ -410,9 +410,10 @@ write.csv(Predictions, file = here::here("docs", "Logit_multicollinearity.csv"),
 ```
 
 ```{r echo = FALSE, fig.align='center', out.width = "800px"}
-glm_multicollinearity <- here::here("figs/glm_multicollinearity.png")
-knitr::include_graphics(glm_multicollinearity)
+glm_multicollinearity <- "titanic_files/figure-markdown_github/glm_multicollinearity.png"
 ```
+
+![](`r glm_multicollinearity`)
 
 ```{r}
 model_NoSex <- glm(Survived ~ Pclass + titles + Fare + Parch + SibSp + Embarked + Age, family = "binomial", data = titanic[1:891, ])
@@ -427,9 +428,10 @@ write.csv(Predictions, file = here::here("docs", "Logit_nocollinearity_submissio
 ```
 
 ```{r echo = FALSE, fig.align='center', out.width = "800px"}
-glm_nomulticollinearity <- here::here("figs/glm_nomulticollinearity.png")
-knitr::include_graphics(glm_nomulticollinearity)
+glm_nomulticollinearity <- "titanic_files/figure-markdown_github/glm_nomulticollinearity.png"
 ```
+
+![](`r glm_nomulticollinearity`)
 
 # Random Forest
 
@@ -478,10 +480,11 @@ solution <- data.frame(PassengerID = titanic[892:1309, ]$PassengerId, Survived =
 write.csv(solution, file = here::here("docs", "random_forest_submission.csv"), row.names = F)
 ```
 
-```{r echo = FALSE, fig.align='center', out.width = "800px"}
-random_forest_submission <- here::here("figs/random_forest_submission.png")
-knitr::include_graphics(random_forest_submission)
+```{r echo = FALSE}
+random_forest_submission <- "titanic_files/figure-markdown_github/random_forest_submission.png"
 ```
+
+![](`r random_forest_submission`)
 
 # Linear Discriminant Analysis
 
@@ -544,15 +547,8 @@ Predictions <- data.frame(PassengerId = 892:1309, Survived = knn_predictions)
 write.csv(Predictions, file = here::here("docs", "knn.csv"), row.names = FALSE)
 ```
 
-```{r fig.align='center', out.width = "800px"}
-knn_submission <- here::here("reports/titanic_files/figure-markdown_github/knn_submission.png")
-knitr::include_graphics("C:/Users/Pascal%20Schmidt/Desktop/blog_posts/22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png")
+```{r echo = FALSE}
+knn_submission <- "titanic_files/figure-markdown_github/knn_submission.png"
 ```
 
-![](blog_posts/22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png?raw=true)
-
-![](22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png?raw=true)
-
-![](blog_posts/22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png)
-
-![](22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png)
+![](`r knn_submission`)

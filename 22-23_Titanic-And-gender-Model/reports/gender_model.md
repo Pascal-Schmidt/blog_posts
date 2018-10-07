@@ -325,7 +325,7 @@ for(i in 1:nrow(gender_mod)) {
 ```
 
     ##    user  system elapsed 
-    ##    4.17    0.00    4.17
+    ##    3.37    0.00    3.37
 
 So, if we want to save time we can also vectorize our operation like in the code below.
 
@@ -351,6 +351,8 @@ titanic$Survived[is.na(titanic$Survived) & titanic$Sex == "female"] <- 1
 sub <- data.frame(PassengerId = 892:1309, Survived = titanic[892:1309, ]$Survived)
 write.csv(sub, here::here("docs", "gender_model.csv"), row.names = FALSE)
 ```
+
+![](gender_model_files/figure-markdown_github/gender_model_submission.png)
 
 ![](gender_model_files/figure-markdown_github/gender_model_submission.png)
 

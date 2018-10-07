@@ -591,7 +591,7 @@ Predictions <- data.frame(titanic[892:1309, ][c("PassengerId", "Survived")])
 write.csv(Predictions, file = here::here("docs", "Logit_multicollinearity.csv"), row.names = FALSE)
 ```
 
-<img src="C:/Users/Pascal Schmidt/Desktop/blog_posts/22-23_Titanic-And-gender-Model/figs/glm_multicollinearity.png" width="800px" style="display: block; margin: auto;" />
+![](titanic_files/figure-markdown_github/glm_multicollinearity.png)
 
 ``` r
 model_NoSex <- glm(Survived ~ Pclass + titles + Fare + Parch + SibSp + Embarked + Age, family = "binomial", data = titanic[1:891, ])
@@ -656,7 +656,7 @@ Predictions <- data.frame(titanic[892:1309, ][c("PassengerId", "Survived")])
 write.csv(Predictions, file = here::here("docs", "Logit_nocollinearity_submission"), row.names = FALSE)
 ```
 
-<img src="C:/Users/Pascal Schmidt/Desktop/blog_posts/22-23_Titanic-And-gender-Model/figs/glm_nomulticollinearity.png" width="800px" style="display: block; margin: auto;" />
+![](titanic_files/figure-markdown_github/glm_nomulticollinearity.png)
 
 Random Forest
 =============
@@ -704,7 +704,7 @@ solution <- data.frame(PassengerID = titanic[892:1309, ]$PassengerId, Survived =
 write.csv(solution, file = here::here("docs", "random_forest_submission.csv"), row.names = F)
 ```
 
-<img src="C:/Users/Pascal Schmidt/Desktop/blog_posts/22-23_Titanic-And-gender-Model/figs/random_forest_submission.png" width="800px" style="display: block; margin: auto;" />
+![](titanic_files/figure-markdown_github/random_forest_submission.png)
 
 Linear Discriminant Analysis
 ============================
@@ -760,17 +760,4 @@ Predictions <- data.frame(PassengerId = 892:1309, Survived = knn_predictions)
 write.csv(Predictions, file = here::here("docs", "knn.csv"), row.names = FALSE)
 ```
 
-``` r
-knn_submission <- here::here("reports/titanic_files/figure-markdown_github/knn_submission.png")
-knitr::include_graphics("C:/Users/Pascal%20Schmidt/Desktop/blog_posts/22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png")
-```
-
-<img src="C:/Users/Pascal%20Schmidt/Desktop/blog_posts/22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png" width="800px" style="display: block; margin: auto;" />
-
-![](blog_posts/22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png?raw=true)
-
-![](22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png?raw=true)
-
-![](blog_posts/22-23_Titanic-And-gender-Model/reports/titanic_files/figure-markdown_github/knn_submission.png)
-
-![](reports/titanic_files/figure-markdown_github/knn_submission.png)
+![](titanic_files/figure-markdown_github/knn_submission.png)
