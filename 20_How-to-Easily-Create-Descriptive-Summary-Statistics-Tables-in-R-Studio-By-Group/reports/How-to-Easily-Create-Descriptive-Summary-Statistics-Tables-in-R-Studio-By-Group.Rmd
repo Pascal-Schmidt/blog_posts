@@ -1,0 +1,494 @@
+---
+title: "How to Easily Create Descriptive Summary Statistics Tables in R Studio - By Group"
+author: "Pascal Schmidt"
+date: "July 11, 2018"
+output: github_document
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+
+```{r message=FALSE, warning=FALSE}
+library(arsenal)
+library(tidyverse)
+library(gapminder)
+data(gapminder)
+```
+
+Summary statistics tables or an exploratory data analysis are the most common ways in order to familiarize oneself with a data set. In addition to that, summary statistics tables are very easy and fast to create and therefore, so common. In this blog post I will be show you how to create descriptive summary statistics tables in R. Almost all of these packages can create a normal descriptive summary statistic table in R and also one by groupings. Meaning, we can choose a factor column and stratify this column by its levels (very useful!). Moreover, one can easily knit their results to html, pdf, or word. This is a great way to use these tables in one's report or presentation.
+
+Let's get started with a quick look at the packages we are going to present:
+
+* arsenal
+* qwraps2
+* amisc
+* table1
+* tangram
+* furniture
+* tableone
+* compareGroups
+* htmltable
+
+### Choosing our Data Set to Create Descriptive Summary Statistics Tables in R
+
+For all of these packages I am providing some code which shows the basics behind the tables and their functionality. For additional information, there is a link to the corresponding vignette which has even more examples and code snippets. In order for you to follow my code, I used the gapminder data set from the gapminder package.
+
+In the code below, I am modifying the `gapminder` data set a little bit. I transformed the `gdpPercap` column to a factor variable with two levels. High is for countries with `gdpPercap` higher than the median `gdpPercap` and low for lower than the median `gdpPercap`. After that I divided the population by one million to make the table more readable. In addition to that I also randomly introduced missing values in the data. I did that because in the real world we rarely experience data sets without any NA values. Therefore, it is important to know how different packages deal with missing values.
+
+```{r warning=FALSE}
+median_gdp <- median(gapminder$gdpPercap)
+gapminder %>%
+  select(-country) %>%
+  mutate(gdpPercap = ifelse(gdpPercap > median_gdp, "high", "low")) %>%
+  mutate(gdpPercap = factor(gdpPercap)) %>%
+  mutate(pop = pop / 1000000) -> gapminder
+
+gapminder <- lapply(gapminder, function(x) x[sample(c(TRUE, NA),
+    prob = c(0.9, 0.1),
+    size = length(x),
+    replace = TRUE
+  )])
+```
+
+Let's start and create descriptive summary statistics tables in R.
+
+### Create Descriptive Summary Statistics Tables in R with arsenal
+
+`arsenal` is my favourite package. It has so much functionality that we essentially could stop right here. We can basically customize anything and the best part about the packages is that it requires only little code.
+
+In the code block below, we are displaying how to create a table with the `tableby()` function and only two lines of code.
+
+```{r results='asis'}
+table_one <- tableby(continent ~ ., data = gapminder)
+summary(table_one, title = "Gapminder Data")
+```
+
+Obviously, this table is far from perfect but especially when we are dealing with large data sets, these two lines are very powerful.
+
+In the next code block, we are customizing our table. We are now adding a median with first and third quantiles and are also changing the order of how the statistics are displayed. The argument `Nmiss2` shows the missing values and if there are none, it shows 0. If you put the argument" `Nmiss` and there are no missing values, then it won't display a line for missing values. Moreover, we can display the missing values not only as counts but also as percentages (more examples in the [vignette](https://cran.r-project.org/web/packages/arsenal/vignettes/tableby.html)).
+
+For categorical variables the table uses a chi-squared test and for numerical variables it uses a Kruskal Wallis test for calculating p-values. However, we can use many different tests like an f-test statistic. In fact, we can add our own p-values if we would like (more in the [vignette](https://cran.r-project.org/web/packages/arsenal/vignettes/tableby.html)).
+
+We can also label our columns with more appropriate names and add a title to our table.
+
+```{r results='asis'}
+my_controls <- tableby.control(
+  test = T,
+  total = T,
+  numeric.test = "kwt", cat.test = "chisq",
+  numeric.stats = c("meansd", "medianq1q3", "range", "Nmiss2"),
+  cat.stats = c("countpct", "Nmiss2"),
+  stats.labels = list(
+    meansd = "Mean (SD)",
+    medianq1q3 = "Median (Q1, Q3)",
+    range = "Min - Max",
+    Nmiss2 = "Missing"
+  )
+)
+
+
+my_labels <- list(
+  lifeExp = "Life Expectancy",
+  pop = "Population (million)",
+  gdpPercap = "GDP per capita",
+  year = "Year"
+)
+
+
+table_two <- tableby(continent ~ .,
+  data = gapminder,
+  control = my_controls
+)
+
+summary(table_two,
+  labelTranslations = my_labels,
+  title = "Summary Statistic of Gapminder Data"
+)
+```
+
+Another nice feature of this package is that we can stratify our table by more than one grouping variable. Here, we group by continent and `gdpPercap`.
+
+```{r results="asis"}
+table_three <- tableby(interaction(continent, gdpPercap) ~ .,
+  data = gapminder,
+  control = my_controls
+)
+
+summary(table_three,
+  labelTranslations = my_labels,
+  title = "Summary Statistic of Gapminder Data"
+)
+```
+
+And of course, we can also only create a very simple table without any groupings.
+
+```{r results='asis'}
+table_four <- tableby(~year + continent + lifeExp + gdpPercap + pop, data = gapminder)
+summary(table_four)
+```
+
+I only covered the most essential parts of the package. Consequently, there is a lot more to discover. If you want to customize your tables even more, check out the [vignette](https://cran.r-project.org/web/packages/arsenal/vignettes/tableby.html) for the package which shows more in-depth examples.
+
+### Create Descriptive Summary Statistics Tables in R with qwraps2
+
+Another great package is the `qwraps2` package. It has very high flexibility for which we have to pay a price! The price we have to pay for it are lots of lines of code. Especially if we have a large data set with lots of columns and levels.
+
+This package uses a nested list and the function `summary_table()` to create the statistics table.
+
+```{r results='asis'}
+library(qwraps2)
+options(qwraps2_markup = "markdown")
+gapminder <- as.data.frame(gapminder)
+summary_statistics <-
+  list(
+    "Life Expectancy" =
+      list(
+        "mean (sd)" = ~qwraps2::mean_sd(lifeExp, na_rm = TRUE),
+        "median (Q1, Q3)" = ~qwraps2::median_iqr(lifeExp, na_rm = TRUE),
+        "min" = ~min(lifeExp, na.rm = TRUE),
+        "max" = ~max(lifeExp, na.rm = TRUE),
+        "Missing" = ~sum(is.na(lifeExp))
+      ),
+    "Population" =
+      list(
+        "mean (sd)" = ~qwraps2::mean_sd(pop, na_rm = TRUE),
+        "median (Q1, Q3)" = ~qwraps2::median_iqr(pop, na_rm = TRUE),
+        "min" = ~min(pop, na.rm = TRUE),
+        "max" = ~max(pop, na.rm = TRUE),
+        "Missing" = ~sum(is.na(pop))
+      ),
+    "GDP per Capita" =
+      list(
+        "High GDP per Capita" = ~qwraps2::n_perc(na.omit(gdpPercap) %in% "high"),
+        "Low GDP per Capita" = ~qwraps2::n_perc(na.omit(gdpPercap) %in% "low"),
+        "Missing" = ~sum(is.na(gdpPercap))
+      )
+  )
+
+summary_table(gapminder, summary_statistics)
+```
+
+As you can see, it is way more lines of code than the previous package. However, it has the great flexibility to customize every single line of our summary table. This is **awesome**!
+
+Now, we are going to show how to display a table stratified by a grouping. The way to do that is with the `group_by` function from the `dplyr` package.
+
+```{r results='asis'}
+print(qwraps2::summary_table(
+  dplyr::group_by(gapminder, continent),
+  summary_statistics
+),
+rtitle = "Summary Statistics Table for the Gapminder Data Set"
+)
+```
+
+Again, more functionality and examples can be found in the [vignette](https://cran.r-project.org/web/packages/qwraps2/vignettes/summary-statistics.html).
+
+### Create Descriptive Summary Statistics Tables in R with Amisc
+
+`Amisc` is a great package for summary statistics tables. Notice however, that this package can only produce tables with groupings. If it has to build a simple summary statistics table, it will fail. Another point worth mentioning is that you can get this package from github. It is currently not on CRAN. Let's jump to the code.
+
+```{r results='asis'}
+# devtools::install_github("AlineTalhouk/Amisc")
+library(Amisc)
+library(pander)
+pander::pandoc.table(Amisc::describeBy(
+  data = gapminder,
+  var.names = c("lifeExp", "pop", "gdpPercap"),
+  by1 = "continent",
+  dispersion = "sd", Missing = TRUE,
+  stats = "non-parametric"
+),
+split.tables = Inf
+)
+```
+
+The table is very simple but informative. It shows, mean, median and the interquartile range, and the missing values as counts and not percentages. The package uses the `pandoc.table()` function from the pander package to display a nicely looking table. Overall, I really like the simplicity of the table. Unfortunately, there is not much documentation about this package.
+
+### Create Descriptive Summary Statistics Tables in R with table1
+
+The next summary statistics package which creates a beautiful table is table1. In the code below, we are first relabelling our columns for aesthetics. Then we are creating the table with only one line of code. We again created a table by groupings.
+
+```{r message = FALSE, echo=FALSE, warning=FALSE}
+library(table1)
+```
+
+```{r results='asis'}
+table1::label(gapminder$lifeExp) <- "Life Expectancy"
+table1::label(gapminder$pop) <- "Population"
+table1::label(gapminder$gdpPercap) <- "Gdp Per Capita"
+
+
+table1::table1(~lifeExp + pop + gdpPercap | continent, data = gapminder)
+table1::table1(~lifeExp + pop + gdpPercap, data = gapminder)
+```
+
+Here, the missing values are displayed as percentages. I prefer to have the missing values displayed only as counts. More often than not, I am interested in the percentage of the factor variables without the NA values included when calculating the percentage. This package unfortunately has only the option to show the missing values as percentages. So essentially it acts as a third factor with high and low together in the gdpPercap column. If you do not mind having the missing values displayed like that then this package is for you.
+
+In the code below, we are showing how to create a table without stratification by any group.
+
+```{r results="asis"}
+table1::table1(~lifeExp + pop + gdpPercap, data = gapminder)
+```
+
+
+Again, many more things are possible with this package. For example, you can create subgroupings. In addition to that it is also possible to put p-values as a separate column at the end of the table. If you are interested, check out the [vignette](https://cran.r-project.org/web/packages/table1/vignettes/table1-examples.html).
+
+Now let's switch the data set. It is becoming a bit boring to see the same data again and again. For the remaining tables, we are using the mtcars data set. Again, a bit modified and with the introduction of missing values.
+
+```{r}
+library(tangram)
+library(purrrlyr)
+library(dplyr)
+```
+
+```{r}
+data(mtcars)
+mtcars %>%
+  mutate(cylinder = factor(cyl), transmission = factor(am), weight = wt, milesPergallon = mpg) %>%
+  select(cylinder, transmission, weight, milesPergallon) -> mtcars
+mtcars$cylinder <- recode(mtcars$cylinder, `4` = "4 cylinders", `6` = "6 cylinders", `8` = "8 cylinders")
+
+mtcars <- lapply(mtcars, function(x) x[sample(c(TRUE, NA),
+    prob = c(0.8, 0.2),
+    size = length(x),
+    replace = TRUE
+  )])
+mtcars <- as.data.frame(mtcars)
+```
+
+### Create Descriptive Summary Statistics Tables in R with tangram
+
+I really really like the next package. The design is very beautiful and the code is also very short. The only drawback of this package is that it only knits to html. You can't compile it to word :(. Another (tiny) drawback is that this table does not show the missing values by default. However, the package includes a function called `insert_row()`, where you can insert missing values or any other values (confidence interval for the mean etc.) that you have calculated.
+
+```{r}
+tan <- tangram::tangram("cylinder ~ transmission + weight + milesPergallon",
+  data = mtcars,
+  msd = TRUE,
+  quant = seq(0, 1, 0.25)
+)
+html5(tan, fragment = TRUE, inline = "hmisc.css", caption = "Summary Statistics of Gapminder Data Set", id = "tbl2")
+
+```
+
+In the next code block, I am showing you how to insert missing values. For the first three lines, I am using the purrrlyr package. This package is a combination of the dplyr and purrr packages. So what I am doing is separating the levels of the column I want to group by. In this case cylinders. After that, I am calculating the missing values of each cylinder group (4, 6 and 8) for every column.
+
+Then we are removing the last column of our tibble which contains the missing values for cylinders. Then we are calculating the total missing cylinder values for each column. After that, we are doing an rbind and them and removing the column names.
+
+```{r results='asis'}
+mtcars %>%
+  slice_rows("cylinder") %>%
+  dmap(~sum(is.na(.))) -> by_cyl
+
+
+by_cyl <- select(by_cyl[-4, ], transmission, weight, milesPergallon) # make sure variables are in the same order they appear in the tangram() function above
+column_sums <- colSums(by_cyl)
+by_cyl <- rbind(column_sums, by_cyl)
+names(by_cyl) <- NULL
+
+### This is how the insert row function works ###
+# tan <- insert_row(tan, 3, "Missing", by_cyl[1, 1], by_cyl[1, 2], by_cyl[1, 3])
+# tan <- insert_row(tan, 5, "Missing", by_cyl[2, 1], by_cyl[2, 2], by_cyl[2, 3])
+# tan <- insert_row(tan, 7, "Missing", by_cyl[3, 1], by_cyl[3, 2], by_cyl[3, 3])
+```
+
+The out commented section is how the `insert_row()` function works. The first argument is the tan object that we have create in the above code block. The next argument is the number where you want to insert a row. Then we specify how we want to name the row. In our case we are naming it "Missing". The next four arguments represent the values that we want to insert in the row. First, the total missing values for the corresponding column. Then the missing values for the corresponding column by cylinder group.
+
+We do not have to necessarily insert the missing values. We can insert any number we want. For example, a trimmed mean.
+
+If you have a lot of rows to insert, this method becomes tedious and you have to write a lot of code. To make your lives easier, I created a generic function which will take care of almost everything. The only part that needs specification is the part where we specify at what position the row should be inserted in the table. You can specify the positions in the row_number vector. The `argument_number` object specifies how many arguments the `insert_function()` takes. The first three arguments are reserved for the table (tan), the row number, and the row label. Then you have an argument for the total number of missing values. After that the number of arguments in the `insert_row()` function depends on how many levels the column has you want to group by. The code below shows the generic function.
+
+```{r}
+split_by <- mtcars$cylinder
+row_numbers <- c(3, 5, 7)
+argument_number <- nlevels(split_by) + 1 + 3 # plus 1 refers to total column in table
+# plus 3 refers to the first 3 args of insert_row
+
+j <- 1
+for (c in row_numbers) {
+  args <- list(1:argument_number)
+  args[[1]] <- tan
+  args[[2]] <- c
+  args[[3]] <- "Missing"
+  for (i in c(4:argument_number)) {
+    args[[i]] <- by_cyl[i - 3, j]
+  }
+  tan <- do.call(tangram::insert_row, args)
+  j <- j + 1
+}
+```
+
+```{r results='asis', warning=FALSE}
+html5(tan, fragment = TRUE, inline = "hmisc.css", caption = "Summary Statistics of Gapminder Data Set", id = "tbl2")
+```
+
+This package has [way more functionality](https://cran.r-project.org/web/packages/tangram/vignettes/fda-example.html) than we have shown. The [documentation](https://cran.r-project.org/web/packages/tangram/tangram.pdf) is very long. However, not very detailed. The [vignette](https://cran.r-project.org/web/packages/tangram/vignettes/example.html) does not show many more examples and when it does, it is a pain to understand the code behind it. Overall it is a good package and when you want to customize it more I would suggest using another package.
+
+### Create Descriptive Summary Statistics Tables in R with furniture
+
+Our next package will be the `furniture` package. It is an okay package in my opinion. Missing values are only displayed for categorical variables and only as percentages again. The overall look of the table is very simple.
+
+```{r message = FALSE, echo=FALSE, warning=FALSE}
+library(furniture)
+library(knitr)
+```
+
+```{r results='asis'}
+furniture::table1(mtcars,
+  "Miles per US gallon" = milesPergallon, "Transmission" = transmission, "Weight 1000 lbs" = weight,
+  splitby = ~cylinder,
+  test = TRUE,
+  na.rm = FALSE,
+  format_number = TRUE
+) -> tab11
+
+kable(tab11)
+
+# only shows missingness for factor variables
+```
+
+There is nothing much more to say and if you are interested you can find the vignette [here](https://cran.r-project.org/web/packages/furniture/vignettes/Furniture.html.
+
+### Create Descriptive Summary Statistics Tables in R with tableone
+
+The `tableone` package is more aesthetic than the `furniture` package. However, it does not display missing values. If you want to display missing values, you must print them out in a separate table with the `summary()` function.
+
+
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+library(tableone)
+library(pander)
+```
+
+We first have to specify which variables are continuous and which variables are categorical in our data set. 
+
+```{r}
+factor_variables <- c("transmission")
+variable_list <- c("milesPergallon", "weight", "transmission")
+```
+
+```{r message=FALSE, warning=FALSE}
+table_one <- CreateTableOne(
+  vars = variable_list,
+  strata = "cylinder",
+  data = mtcars,
+  factorVars = factor_variables
+)
+```
+
+```{r results='hide'}
+table_one_matrix <- print(table_one,
+  includeNA = TRUE,
+  showAllLevels = TRUE
+)
+```
+
+The following table does not include missing values
+
+```{r results='asis'}
+pandoc_table <- pandoc.table(table_one_matrix,
+  split.table = Inf,
+  style = "rmarkdown",
+  caption = "mtcars summary statistics table"
+)
+```
+
+For a more detailed summary on missing values. 
+
+```{r}
+summary(table_one)
+```
+
+As with the furniture package there is nothing more to add and the vignette can be found [here](https://cran.r-project.org/web/packages/tableone/vignettes/introduction.html).
+
+### Create Descriptive Summary Statistics Tables in R with compareGroups
+
+`ComapareGroups` is another great package that can stratify our table by groups. It is very simple to use. One drawback however is that it does not display missing values by default. When we want to add missing values we must include the argument include.miss = TRUE. The missing values are only displayed as percentages. As with the tableone package, we can display missing values in a separate table.
+
+Another drawback of the `compareGroups` package is that the table can only display five or less groups. So, when we have a column with more than five levels, `compareGroups` cannot create the table and we must pivot to another one. Fortunately, for the mtcars data set we only have three groupings (4 cylinders, 6 cylinders, and 8 cylinders).
+
+```{r warning=FALSE, message=FALSE}
+library(compareGroups)
+```
+
+```{r results='asis'}
+table <- compareGroups(cylinder ~ ., data = mtcars)
+pvals <- getResults(table, "p.overall")
+p.adjust(pvals, method = "BH")
+export_table <- createTable(table)
+export2word(export_table, file = "table.docx")
+```
+
+There is a lot more to discover for this package in the [vignette](https://cran.r-project.org/web/packages/compareGroups/vignettes/compareGroups_vignette.html).
+
+### Create Descriptive Summary Statistics Tables in R with Gmisc
+
+The `Gmisc` package is another great package which will create an awesome looking summary statistics table for you. Relabelling variables is very easy and the table looks really beautiful. The only drawback is that the table can only be created in an html file. It unfortunately cannot be knitted to a word document.
+
+```{r}
+library(Gmisc)
+```
+
+
+```{r}
+getT1Stat <- function(varname, digits = 0) {
+  getDescriptionStatsBy(mtcars[, varname],
+    mtcars$cylinder,
+    add_total_col = TRUE,
+    show_all_values = TRUE,
+    hrzl_prop = TRUE,
+    statistics = FALSE,
+    html = TRUE,
+    digits = digits
+  )
+}
+
+table_data <- list()
+```
+
+```{r}
+table_data[["Miles/(US) gallon"]] <- getT1Stat("milesPergallon")
+table_data[["Weight (1000 lbs)"]] <- getT1Stat("weight")
+table_data[["Transmission (0 = automatic, 1 = manual)"]] <- getT1Stat("transmission")
+```
+
+```{r}
+rgroup <- c()
+n.rgroup <- c()
+output_data <- NULL
+for (varlabel in names(table_data)) {
+  output_data <- rbind(
+    output_data,
+    table_data[[varlabel]]
+  )
+  rgroup <- c(
+    rgroup,
+    varlabel
+  )
+  n.rgroup <- c(
+    n.rgroup,
+    nrow(table_data[[varlabel]])
+  )
+}
+
+
+htmlTable(output_data,
+  align = "rrrr",
+  rgroup = rgroup, n.rgroup = n.rgroup,
+  rgroupCSSseparator = "",
+  rowlabel = "",
+  caption = "Summary Statistics",
+  ctable = TRUE
+)
+```
+
+For more information and examples have a look at the [vignette](https://cran.r-project.org/web/packages/Gmisc/vignettes/Descriptives.html).
+
+I discovered all of these packages during my data science internship. If you want to know what else I had to do and what I learned from this data science internship then you can read about it [here](http://thatdatatho.com/2018/07/23/data-science-internship/).
+
+I hope you all have enjoyed this post and that you have found a package which suits your needs. If there are any other packages you know of that I have missed in this blog post please let me know in the comments below.
+
+If you liked this blog post, you might also like a [collection of other packages](https://htmlpreview.github.io/?https://github.com/ropenscilabs/packagemetrics/blob/master/inst/examples/tableGallery.html#7:_tableby) which can create tables for you (anova tables, linear models output tables, and more descriptive summary statistics tables). The ones I presented are the best ones for descriptive summary tables I believe.
+
+Lastly, [this](https://dabblingwithdata.wordpress.com/2018/01/02/my-favourite-r-package-for-summarising-data/) is another great blog post that presents how to easily summarise data in R.

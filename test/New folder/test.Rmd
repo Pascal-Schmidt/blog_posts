@@ -1,9 +1,0 @@
----
-title: "Untitled"
-author: "Pascal Schmidt"
-date: "October 6, 2018"
-output: github_document
----
-
-
-![](b/bias.jpeg)
