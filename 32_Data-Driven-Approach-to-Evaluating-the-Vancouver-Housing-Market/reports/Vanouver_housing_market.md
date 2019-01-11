@@ -42,47 +42,53 @@ craigslist <- read.csv(here::here("data", "craigslist.csv"))
 # data wrangling and data manipulation
 # the code below groups the apartments into square feet
 craigslist %>%
-  dplyr::mutate(SqFt_mod = cut(.$SqFt, 
-                               breaks = seq(from = 0, to = 1199, by = 100),
-                               labels = paste0(seq(from = 1, to = 1099, by = 100), "-", seq(from = 101, to = 1100, by = 100))),
-                SqFt_mod_2 = cut(.$SqFt, 
-                                 breaks = seq(from = 1100, to = 3099, by = 250),
-                                 labels = paste0(seq(from = 1101, to = 2849, by = 250), "-", seq(from = 1351, to = 3100, by = 250))),
-                SqFt_mod_3 = cut(.$SqFt, 
-                                 breaks = seq(from = 3100, to = 13099, by = 500),
-                                 labels = paste0(seq(from = 3101, to = 12599, by = 500), "-", seq(from = 3601, to = 13100, by = 500)))) %>%
+  dplyr::mutate(
+    SqFt_mod = cut(.$SqFt,
+      breaks = seq(from = 0, to = 1199, by = 100),
+      labels = paste0(seq(from = 1, to = 1099, by = 100), "-", seq(from = 101, to = 1100, by = 100))
+    ),
+    SqFt_mod_2 = cut(.$SqFt,
+      breaks = seq(from = 1100, to = 3099, by = 250),
+      labels = paste0(seq(from = 1101, to = 2849, by = 250), "-", seq(from = 1351, to = 3100, by = 250))
+    ),
+    SqFt_mod_3 = cut(.$SqFt,
+      breaks = seq(from = 3100, to = 13099, by = 500),
+      labels = paste0(seq(from = 3101, to = 12599, by = 500), "-", seq(from = 3601, to = 13100, by = 500))
+    )
+  ) %>%
   tidyr::unite(., SqFt_mod, c("SqFt_mod", "SqFt_mod_2", "SqFt_mod_3"), sep = "", remove = TRUE) %>%
   dplyr::mutate(., SqFt_mod = gsub("NA", "", SqFt_mod)) -> craigslist
 
-# remove all variables with missing locations and 
+# remove all variables with missing locations and
 # remove all variables that have missing values for square feet and bedrooms
 craigslist %>%
   dplyr::filter(., !(is.na(SqFt) & is.na(Bedrooms))) %>%
   dplyr::filter(., !is.na(Location)) %>%
-  tidyr::separate(., col = Location,
-                  into = c("street", "city"),
-                  sep = ", ", 
-                  remove = TRUE) %>%
+  tidyr::separate(.,
+    col = Location,
+    into = c("street", "city"),
+    sep = ", ",
+    remove = TRUE
+  ) %>%
   dplyr::mutate(., neighborhood = NA) -> craigslist
 ```
 
 ``` r
-for(i in 1:length(data_streets)) {
+for (i in 1:length(data_streets)) {
   craigslist$neighborhood[craigslist$street %in% (data_streets[[i]] %>%
-  dplyr::pull(.))] <- colnames(data_streets[[i]])
+    dplyr::pull(.))] <- colnames(data_streets[[i]])
 }
 
-for(i in 1:nrow(craigslist)) {
+for (i in 1:nrow(craigslist)) {
   craigslist[i, "neighborhood"]["Maple Ridge" %in% craigslist[i, "city"]] <- "Maple Ridge"
   craigslist[i, "neighborhood"]["Marpole Avenue" %in% craigslist[i, "street_name"] & "Port Coquitlam" %in% craigslist[i, "city"]] <- "Port Coquitlam"
   craigslist[i, "neighborhood"]["Marpole Avenue" %in% craigslist[i, "street_name"] & "Vancouver West" %in% craigslist[i, "city"]] <- "Fairview"
   craigslist[i, "neighborhood"]["Hamilton Street" %in% craigslist[i, "street_name"] & "Vancouver West" %in% craigslist[i, "city"]] <- "Yaletown"
   craigslist[i, "neighborhood"]["Hamilton Street" %in% craigslist[i, "street_name"] & "New Westminster" %in% craigslist[i, "city"]] <- "Kelvin"
   craigslist[i, "neighborhood"]["Tsawwassen" %in% craigslist[i, "city"]] <- "Tsawwassen"
-  
 }
 
-for(i in 1:nrow(craigslist)) {
+for (i in 1:nrow(craigslist)) {
   craigslist[i, "neighborhood"]["Marpole Avenue" %in% craigslist[i, "street"] & "Port Coquitlam" %in% craigslist[i, "city"]] <- "Port Coquitlam"
   craigslist[i, "neighborhood"]["Marpole Avenue" %in% craigslist[i, "street"] & "Vancouver West" %in% craigslist[i, "city"]] <- "Fairview"
   craigslist[i, "neighborhood"]["Hamilton Street" %in% craigslist[i, "street"] & "Vancouver West" %in% craigslist[i, "city"]] <- "Yaletown"
@@ -101,32 +107,32 @@ for(i in 1:nrow(craigslist)) {
   craigslist[i, "neighborhood"]["Central Coquitlam" %in% craigslist[i, "street"]] <- "Central Coquitlam"
   craigslist[i, "neighborhood"]["Broadway" %in% craigslist[i, "street"] | "Coquitlam" %in% craigslist[i, "street"]] <- "Coquitlam"
   craigslist[i, "neighborhood"]["East Vancouver" %in% craigslist[i, "street"]] <- "East Vancouver"
-  
+
   craigslist[i, "neighborhood"]["West Vancouver" %in% craigslist[i, "street"]] <- "West Vancouver"
   craigslist[i, "neighborhood"]["West Coquitlam" %in% craigslist[i, "street"]] <- "West Coquitlam"
   craigslist[i, "neighborhood"]["Vancouver" %in% craigslist[i, "street"]] <- "Vancouver"
-  
-  
+
+
   craigslist[i, "neighborhood"]["Surrey" %in% craigslist[i, "street"]] <- "Surrey"
   craigslist[i, "neighborhood"]["South Granville" %in% craigslist[i, "street"]] <- "South Granville"
-  
+
   craigslist[i, "neighborhood"]["South Vancouver" %in% craigslist[i, "street"]] <- "South Vancouver"
   craigslist[i, "neighborhood"]["Richmond Centre" %in% craigslist[i, "street"]] <- "Richmond Central"
   craigslist[i, "neighborhood"]["Richmond" %in% craigslist[i, "street"]] <- "Richmond"
   craigslist[i, "neighborhood"]["Port Moody" %in% craigslist[i, "street"]] <- "Port Moody"
-  
+
   craigslist[i, "neighborhood"]["Pitt Meadows" %in% craigslist[i, "street"]] <- "Pitt Meadows"
   craigslist[i, "neighborhood"]["North Vancouver" %in% craigslist[i, "street"]] <- "North Vancouver"
   craigslist[i, "neighborhood"]["North Coquitlam" %in% craigslist[i, "street"]] <- "North Coquitlam"
   craigslist[i, "neighborhood"]["North Burnaby" %in% craigslist[i, "street"]] <- "North Burnaby"
-  
+
   craigslist[i, "neighborhood"]["New Westminster" %in% craigslist[i, "street"]] <- "New Westminster"
   craigslist[i, "neighborhood"]["Maple Ridge" %in% craigslist[i, "street"]] <- "Maple Ridge"
   craigslist[i, "neighborhood"]["East Burnaby" %in% craigslist[i, "street"]] <- "East Burnaby"
   craigslist[i, "neighborhood"]["Pitt Meadows" %in% craigslist[i, "city"]] <- "Pitt Meadows"
   craigslist[i, "neighborhood"]["Port Coquitlam" %in% craigslist[i, "city"]] <- "Port Coquitlam"
   craigslist[i, "neighborhood"]["Port Moody" %in% craigslist[i, "city"]] <- "Port Moody"
-  
+
   craigslist[i, "neighborhood"]["Coquitlam West" %in% craigslist[i, "street"]] <- "Laurentian Belaire"
 }
 
@@ -157,12 +163,12 @@ df <- tibble::data_frame(path = path) %>%
 
 data_streets <- df$data
 
-for(i in 1:length(data_streets)) {
+for (i in 1:length(data_streets)) {
   housing$neighborhood[housing$street_name %in% (data_streets[[i]] %>%
-  dplyr::pull(.))] <- colnames(data_streets[[i]])
+    dplyr::pull(.))] <- colnames(data_streets[[i]])
 }
 
-for(i in 1:nrow(housing)) {
+for (i in 1:nrow(housing)) {
   housing[i, "neighborhood"]["Maple Ridge" %in% housing[i, "city"]] <- "Maple Ridge"
   housing[i, "neighborhood"]["Marpole Avenue" %in% housing[i, "street_name"] & "Port Coquitlam" %in% housing[i, "city"]] <- "Port Coquitlam"
   housing[i, "neighborhood"]["Marpole Avenue" %in% housing[i, "street_name"] & "Vancouver West" %in% housing[i, "city"]] <- "Fairview"
@@ -174,23 +180,30 @@ for(i in 1:nrow(housing)) {
 
 ``` r
 housing %>%
-  dplyr::mutate(price = stringr::str_sub(.[, "price"], start = 2, end = 8) %>%
-                  stringr::str_remove_all(., ","),
-                squares = stringr::str_remove_all(.[, "squares"], "sq.ft.") %>%
-                  stringr::str_remove_all(., ",")) %>% 
+  dplyr::mutate(
+    price = stringr::str_sub(.[, "price"], start = 2, end = 8) %>%
+      stringr::str_remove_all(., ","),
+    squares = stringr::str_remove_all(.[, "squares"], "sq.ft.") %>%
+      stringr::str_remove_all(., ",")
+  ) %>%
   dplyr::mutate_at(., .vars = c("price", "squares", "age", "bed", "bath"), funs(as.integer(.))) %>%
   dplyr::mutate_if(., is.character, as.factor) -> housing
 
 housing %>%
-  dplyr::mutate(SqFt_mod = cut(.$squares, 
-                               breaks = seq(from = 0, to = 1199, by = 100),
-                               labels = paste0(seq(from = 1, to = 1099, by = 100), "-", seq(from = 101, to = 1100, by = 100))),
-                SqFt_mod_2 = cut(.$squares, 
-                                 breaks = seq(from = 1100, to = 3099, by = 250),
-                                 labels = paste0(seq(from = 1101, to = 2849, by = 250), "-", seq(from = 1351, to = 3100, by = 250))),
-                SqFt_mod_3 = cut(.$squares, 
-                                 breaks = seq(from = 3100, to = 13099, by = 500),
-                                 labels = paste0(seq(from = 3101, to = 12599, by = 500), "-", seq(from = 3601, to = 13100, by = 500)))) %>%
+  dplyr::mutate(
+    SqFt_mod = cut(.$squares,
+      breaks = seq(from = 0, to = 1199, by = 100),
+      labels = paste0(seq(from = 1, to = 1099, by = 100), "-", seq(from = 101, to = 1100, by = 100))
+    ),
+    SqFt_mod_2 = cut(.$squares,
+      breaks = seq(from = 1100, to = 3099, by = 250),
+      labels = paste0(seq(from = 1101, to = 2849, by = 250), "-", seq(from = 1351, to = 3100, by = 250))
+    ),
+    SqFt_mod_3 = cut(.$squares,
+      breaks = seq(from = 3100, to = 13099, by = 500),
+      labels = paste0(seq(from = 3101, to = 12599, by = 500), "-", seq(from = 3601, to = 13100, by = 500))
+    )
+  ) %>%
   tidyr::unite(., SqFt_mod, c("SqFt_mod", "SqFt_mod_2", "SqFt_mod_3"), sep = "", remove = TRUE) %>%
   dplyr::mutate(., SqFt_mod = gsub("NA", "", SqFt_mod)) -> housing
 ```
@@ -205,7 +218,7 @@ The Vancouver housing market is one of the most expensive ones in the world. Con
 -   What locations have the best price to rent ratios?
 -   In what locations should you buy and in what locations should you rent?
 
-<img src="C:/Users/Pascal Schmidt/Desktop/blog_posts/32_Data-Driven-Approach-to-Evaluating-the-Vancouver-Housing-Market/reports/figs/van-city.jpg" width="800px" style="display: block; margin: auto;" />
+![](Vanouver_housing_market_files/figure-markdown_github/van-city.jpg)
 
 Data Collection
 ---------------
@@ -216,7 +229,7 @@ We did that in order to decrease the variance for our home prices and rents but 
 
 We collected rent data and housing prices from Vancouver, Richmond, New Westminster, and Coquitlam. We restriced our search to apartments that cost less than a million dollars. This is because we did not want to collect any outlier luxury apartments worth millions of dollars.
 
-<img src="C:/Users/Pascal Schmidt/Desktop/blog_posts/32_Data-Driven-Approach-to-Evaluating-the-Vancouver-Housing-Market/reports/figs/vancouver-map.png" width="800px" style="display: block; margin: auto;" />
+![](Vanouver_housing_market_files/figure-markdown_github/vancouver-map.png)
 
 What Are the Market Rates for Rent and Home Prices in Vancouver?
 ----------------------------------------------------------------
@@ -1729,7 +1742,7 @@ If you are familiar with the successful real estate investor [Grant Cardone](htt
 
 > Rent where you live and own what you can rent.
 
-<img src="C:/Users/Pascal Schmidt/Desktop/blog_posts/32_Data-Driven-Approach-to-Evaluating-the-Vancouver-Housing-Market/reports/figs/grant-cardone.jpg" width="250px" style="display: block; margin: auto;" />
+<img src="Vanouver_housing_market_files/figure-markdown_github/grant-cardone.jpg" width="250px" style="display: block; margin: auto;" />
 
 This is what we are trying to figure out now.
 
@@ -1748,14 +1761,16 @@ The results are displayed in the table below.
 ``` r
 # here, we are splitting the craigslist data frame into a list of data frames for each neighborhood
 # then we are grouping by square feet and then calculating the average rent and number of apartments
-# then we are creating a new variable square_neighborhood to do an 
+# then we are creating a new variable square_neighborhood to do an
 # inner join later with the housing data
 craigslist %>%
   tidyr::drop_na(., SqFt) %>%
   base::split(., .$neighborhood) %>%
   purrr::map(~dplyr::group_by(., SqFt_mod)) %>%
-  purrr::map(~dplyr::mutate(., avg_price_rent = mean(Price, na.rm = TRUE),
-                            n_rent = n())) %>%
+  purrr::map(~dplyr::mutate(.,
+    avg_price_rent = mean(Price, na.rm = TRUE),
+    n_rent = n()
+  )) %>%
   purrr::map(~dplyr::distinct(., avg_price, .keep_all = TRUE)) %>%
   base::do.call(rbind, .) %>%
   dplyr::select(., SqFt_mod, neighborhood, avg_price_rent, n_rent) %>%
@@ -1766,19 +1781,23 @@ housing %>%
   tidyr::drop_na(., squares) %>%
   base::split(., .$neighborhood) %>%
   purrr::map(~dplyr::group_by(., SqFt_mod)) %>%
-  purrr::map(~dplyr::mutate(., avg_price_house = mean(price, na.rm = TRUE),
-                            n_housing = n())) %>%
+  purrr::map(~dplyr::mutate(.,
+    avg_price_house = mean(price, na.rm = TRUE),
+    n_housing = n()
+  )) %>%
   purrr::map(~dplyr::distinct(., avg_price, .keep_all = TRUE)) %>%
   base::do.call(rbind, .) %>%
   dplyr::select(., neighborhood, SqFt_mod, avg_price_house, n_housing) %>%
   tidyr::unite(., square_neighborhood, SqFt_mod, neighborhood, sep = "_") -> housing_avg
 
-# now we are doing an inner join on the variable square_neigborhood 
+# now we are doing an inner join on the variable square_neigborhood
 # then we are calculating the price to rent ratios for neigborhoods with corresponding square feet
 rent_avg %>%
   dplyr::inner_join(., housing_avg, by = "square_neighborhood") %>%
-  dplyr::mutate(., avg_price_rent = avg_price_rent * 12,
-                price_rent_ratio = avg_price_house / avg_price_rent) %>%
+  dplyr::mutate(.,
+    avg_price_rent = avg_price_rent * 12,
+    price_rent_ratio = avg_price_house / avg_price_rent
+  ) %>%
   dplyr::arrange(desc(price_rent_ratio)) %>%
   dplyr::select(., -avg_price_rent, -avg_price_house) %>%
   dplyr::filter(., n_rent > 2 & n_housing > 2) %>%
@@ -2543,7 +2562,7 @@ rent_avg %>%
 </table>
 
 ``` r
-  # write.table(., file = "price_to_rent.txt", sep = ",", quote = FALSE, row.names = F)
+# write.table(., file = "price_to_rent.txt", sep = ",", quote = FALSE, row.names = F)
 ```
 
 ### Buying vs. Renting in the Greater Vancouver Real Estate Market
@@ -2570,7 +2589,7 @@ unused_levels <- housing[which(!(housing$neighborhood) %in% craigslist$neighborh
   unique(.) %>%
   as.character()
 
-pred_df <- housing[!(housing$neighborhood %in% c(unused_levels, "Birchland Manor", "Lower Lonsdale")), ] %>% 
+pred_df <- housing[!(housing$neighborhood %in% c(unused_levels, "Birchland Manor", "Lower Lonsdale")), ] %>%
   gdata::drop.levels(.) %>%
   dplyr::rename(., Bedrooms = bed, SqFt = squares)
 
@@ -2578,9 +2597,11 @@ pred_df %>%
   dplyr::mutate(., predictions_rent = predict(lm_rent, newdata = pred_df, type = "response")) %>%
   base::split(., .$neighborhood) %>%
   purrr::map(~dplyr::group_by(., SqFt_mod)) %>%
-  purrr::map(~dplyr::mutate(., avg_price_house = mean(price, na.rm = TRUE),
-                            predicted_rent = mean(predictions_rent, na.rm = TRUE),
-                            n = n())) %>%
+  purrr::map(~dplyr::mutate(.,
+    avg_price_house = mean(price, na.rm = TRUE),
+    predicted_rent = mean(predictions_rent, na.rm = TRUE),
+    n = n()
+  )) %>%
   purrr::map(~dplyr::distinct(., avg_price, .keep_all = TRUE)) %>%
   base::do.call(rbind, .) %>%
   dplyr::select(., SqFt_mod, neighborhood, avg_price_house, n, predicted_rent) %>%
@@ -4220,7 +4241,7 @@ unused_levels <- craigslist[which(!(craigslist$neighborhood) %in% housing$neighb
   unique(.) %>%
   as.character()
 
-pred_df <- craigslist[!(craigslist$neighborhood %in% unused_levels), ] %>% 
+pred_df <- craigslist[!(craigslist$neighborhood %in% unused_levels), ] %>%
   gdata::drop.levels(.) %>%
   dplyr::rename(., bed = Bedrooms, squares = SqFt)
 
@@ -4228,9 +4249,11 @@ pred_df %>%
   dplyr::mutate(., predictions_house = predict(lm_prices, newdata = pred_df, type = "response")) %>%
   base::split(., .$neighborhood) %>%
   purrr::map(~dplyr::group_by(., SqFt_mod)) %>%
-  purrr::map(~dplyr::mutate(., avg_price_rent = mean(Price, na.rm = TRUE),
-                            predicted_house = mean(predictions_house, na.rm = TRUE),
-                            n = n())) %>%
+  purrr::map(~dplyr::mutate(.,
+    avg_price_rent = mean(Price, na.rm = TRUE),
+    predicted_house = mean(predictions_house, na.rm = TRUE),
+    n = n()
+  )) %>%
   purrr::map(~dplyr::distinct(., avg_price, .keep_all = TRUE)) %>%
   base::do.call(rbind, .) %>%
   dplyr::select(., SqFt_mod, neighborhood, avg_price_rent, n, predicted_house) %>%
@@ -6224,18 +6247,20 @@ library(ggmap)
 register_google(key = "AIzaSyAui-Y39y609FrTUC2dNuYagemigg4iHSo")
 
 
-real_estate_map <- ggmap(get_googlemap(center = c(lon = -123.037, lat = 49.24),
-                                       zoom = 11,
-                                       scale = 1, size = c(640, 640),
-                                       maptype ='terrain',
-                                       color = 'color')) + 
-  scale_y_continuous(limits = c(49.125, 49.325)) + 
+real_estate_map <- ggmap(get_googlemap(
+  center = c(lon = -123.037, lat = 49.24),
+  zoom = 11,
+  scale = 1, size = c(640, 640),
+  maptype = "terrain",
+  color = "color"
+)) +
+  scale_y_continuous(limits = c(49.125, 49.325)) +
   ylab("Latitude") +
   xlab("Longitude")
 
 # jpeg('google_maps.jpg')
-real_estate_map + 
-  geom_point(aes(x = longitude, y = latitude,  colour = neighborhood), data = x, size = 1, alpha = 0.35) + 
+real_estate_map +
+  geom_point(aes(x = longitude, y = latitude, colour = neighborhood), data = x, size = 1, alpha = 0.35) +
   theme(legend.position = "none")
 ```
 
