@@ -205,7 +205,7 @@ The Vancouver housing market is one of the most expensive ones in the world. Con
 -   What locations have the best price to rent ratios?
 -   In what locations should you buy and in what locations should you rent?
 
-<img src="C:/Users/Pascal Schmidt/Desktop/blog_posts/32_Data-Driven-Approach-to-Evaluating-the-Vancouver-Housing-Market/reports/figs/van-city.jpg" width="800px" style="display: block; margin: auto;" />
+<img src="C:/Users/Pascal Schmidt/Desktop/blog_posts/32_Data-Driven-Approach-to-Evaluating-the-Vancouver-Housing-Market/reportsVancouver_housing_market_filesvan-city.jpg" width="800px" style="display: block; margin: auto;" />
 
 Data Collection
 ---------------
@@ -216,7 +216,7 @@ We did that in order to decrease the variance for our home prices and rents but 
 
 We collected rent data and housing prices from Vancouver, Richmond, New Westminster, and Coquitlam. We restriced our search to apartments that cost less than a million dollars. This is because we did not want to collect any outlier luxury apartments worth millions of dollars.
 
-<img src="C:/Users/Pascal Schmidt/Desktop/blog_posts/32_Data-Driven-Approach-to-Evaluating-the-Vancouver-Housing-Market/reports/figs/vancouver-map.png" width="800px" style="display: block; margin: auto;" />
+<img src="C:/Users/Pascal Schmidt/Desktop/blog_posts/32_Data-Driven-Approach-to-Evaluating-the-Vancouver-Housing-Market/reportsVancouver_housing_market_filesvancouver-map.png" width="800px" style="display: block; margin: auto;" />
 
 What Are the Market Rates for Rent and Home Prices in Vancouver?
 ----------------------------------------------------------------
@@ -1729,7 +1729,7 @@ If you are familiar with the successful real estate investor [Grant Cardone](htt
 
 > Rent where you live and own what you can rent.
 
-<img src="C:/Users/Pascal Schmidt/Desktop/blog_posts/32_Data-Driven-Approach-to-Evaluating-the-Vancouver-Housing-Market/reports/figs/grant-cardone.jpg" width="250px" style="display: block; margin: auto;" />
+<img src="C:/Users/Pascal Schmidt/Desktop/blog_posts/32_Data-Driven-Approach-to-Evaluating-the-Vancouver-Housing-Market/reportsVancouver_housing_market_filesgrant-cardone.jpg" width="250px" style="display: block; margin: auto;" />
 
 This is what we are trying to figure out now.
 
