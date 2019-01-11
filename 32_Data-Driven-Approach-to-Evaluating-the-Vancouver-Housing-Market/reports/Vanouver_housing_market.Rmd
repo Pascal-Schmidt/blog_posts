@@ -2,7 +2,7 @@
 title: "A Data Driven Approach to Evaluating the Vancouver Housing Market"
 author: "Pascal Schmidt"
 date: "November 18, 2018"
-github_document: default
+output: github_document
 ---
 
 ```{r}
