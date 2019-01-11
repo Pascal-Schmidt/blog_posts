@@ -1,0 +1,543 @@
+---
+title: "A Data Driven Approach to Evaluating the Vancouver Housing Market"
+author: "Pascal Schmidt"
+date: "November 18, 2018"
+github_document: default
+---
+
+```{r}
+knitr::opts_chunk$set(warning = FALSE, results = "asis", message = FALSE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+## Data Cleaning and Data Wrangling
+
+```{r}
+###################################
+### Reading in the streets data ###
+###################################
+
+path <- list.files(path = here::here("data"), pattern = ".xlsx")
+df <- tibble::data_frame(path = path) %>%
+  dplyr::mutate(., path = paste0(here::here("data"), "/", path)) %>%
+  dplyr::mutate(., sheet_name = purrr::map(path, readxl::excel_sheets)) %>%
+  tidyr::unnest(.) %>%
+  dplyr::mutate(., data = purrr::map2(
+    path, sheet_name,
+    ~readxl::read_excel(.x, .y)
+  ))
+
+data_streets <- df$data
+```
+
+```{r}
+##############################################
+### Rading in renting data from craigslist ###
+##############################################
+
+craigslist <- read.csv(here::here("data", "craigslist.csv"))
+
+# data wrangling and data manipulation
+# the code below groups the apartments into square feet
+craigslist %>%
+  dplyr::mutate(SqFt_mod = cut(.$SqFt, 
+                               breaks = seq(from = 0, to = 1199, by = 100),
+                               labels = paste0(seq(from = 1, to = 1099, by = 100), "-", seq(from = 101, to = 1100, by = 100))),
+                SqFt_mod_2 = cut(.$SqFt, 
+                                 breaks = seq(from = 1100, to = 3099, by = 250),
+                                 labels = paste0(seq(from = 1101, to = 2849, by = 250), "-", seq(from = 1351, to = 3100, by = 250))),
+                SqFt_mod_3 = cut(.$SqFt, 
+                                 breaks = seq(from = 3100, to = 13099, by = 500),
+                                 labels = paste0(seq(from = 3101, to = 12599, by = 500), "-", seq(from = 3601, to = 13100, by = 500)))) %>%
+  tidyr::unite(., SqFt_mod, c("SqFt_mod", "SqFt_mod_2", "SqFt_mod_3"), sep = "", remove = TRUE) %>%
+  dplyr::mutate(., SqFt_mod = gsub("NA", "", SqFt_mod)) -> craigslist
+
+# remove all variables with missing locations and 
+# remove all variables that have missing values for square feet and bedrooms
+craigslist %>%
+  dplyr::filter(., !(is.na(SqFt) & is.na(Bedrooms))) %>%
+  dplyr::filter(., !is.na(Location)) %>%
+  tidyr::separate(., col = Location,
+                  into = c("street", "city"),
+                  sep = ", ", 
+                  remove = TRUE) %>%
+  dplyr::mutate(., neighborhood = NA) -> craigslist
+```
+
+```{r}
+for(i in 1:length(data_streets)) {
+  craigslist$neighborhood[craigslist$street %in% (data_streets[[i]] %>%
+  dplyr::pull(.))] <- colnames(data_streets[[i]])
+}
+
+for(i in 1:nrow(craigslist)) {
+  craigslist[i, "neighborhood"]["Maple Ridge" %in% craigslist[i, "city"]] <- "Maple Ridge"
+  craigslist[i, "neighborhood"]["Marpole Avenue" %in% craigslist[i, "street_name"] & "Port Coquitlam" %in% craigslist[i, "city"]] <- "Port Coquitlam"
+  craigslist[i, "neighborhood"]["Marpole Avenue" %in% craigslist[i, "street_name"] & "Vancouver West" %in% craigslist[i, "city"]] <- "Fairview"
+  craigslist[i, "neighborhood"]["Hamilton Street" %in% craigslist[i, "street_name"] & "Vancouver West" %in% craigslist[i, "city"]] <- "Yaletown"
+  craigslist[i, "neighborhood"]["Hamilton Street" %in% craigslist[i, "street_name"] & "New Westminster" %in% craigslist[i, "city"]] <- "Kelvin"
+  craigslist[i, "neighborhood"]["Tsawwassen" %in% craigslist[i, "city"]] <- "Tsawwassen"
+  
+}
+
+for(i in 1:nrow(craigslist)) {
+  craigslist[i, "neighborhood"]["Marpole Avenue" %in% craigslist[i, "street"] & "Port Coquitlam" %in% craigslist[i, "city"]] <- "Port Coquitlam"
+  craigslist[i, "neighborhood"]["Marpole Avenue" %in% craigslist[i, "street"] & "Vancouver West" %in% craigslist[i, "city"]] <- "Fairview"
+  craigslist[i, "neighborhood"]["Hamilton Street" %in% craigslist[i, "street"] & "Vancouver West" %in% craigslist[i, "city"]] <- "Yaletown"
+  craigslist[i, "neighborhood"]["Hamilton Street" %in% craigslist[i, "street"] & "New Westminster" %in% craigslist[i, "city"]] <- "Kelvin"
+  craigslist[i, "neighborhood"]["Yaletown" %in% craigslist[i, "city"]] <- "Yaletown"
+  craigslist[i, "neighborhood"]["Coal Harbour" %in% craigslist[i, "city"]] <- "Coal Harbour"
+  craigslist[i, "neighborhood"]["Kerrisdale" %in% craigslist[i, "city"]] <- "Kerrisdale"
+  craigslist[i, "neighborhood"]["Kitsilano" %in% craigslist[i, "city"]] <- "Kitsilano"
+  craigslist[i, "neighborhood"]["Metrotown" %in% craigslist[i, "city"]] <- "Metrotown"
+  craigslist[i, "neighborhood"]["Burnaby North" %in% craigslist[i, "street"]] <- "Burnaby North"
+  craigslist[i, "neighborhood"]["Burnaby" %in% craigslist[i, "street"]] <- "Burnaby"
+  craigslist[i, "neighborhood"]["Burquitlam" %in% craigslist[i, "street"] | "North Road" %in% craigslist[i, "street"]] <- "Burquitlam"
+  craigslist[i, "neighborhood"]["Central Coquitlam" %in% craigslist[i, "street"]] <- "Coquitlam Centre"
+  craigslist[i, "neighborhood"]["Coquitlam Center" %in% craigslist[i, "street"]] <- "Coquitlam Centre"
+  craigslist[i, "neighborhood"]["Coquitlam Centre" %in% craigslist[i, "street"]] <- "Coquitlam Centre"
+  craigslist[i, "neighborhood"]["Central Coquitlam" %in% craigslist[i, "street"]] <- "Central Coquitlam"
+  craigslist[i, "neighborhood"]["Broadway" %in% craigslist[i, "street"] | "Coquitlam" %in% craigslist[i, "street"]] <- "Coquitlam"
+  craigslist[i, "neighborhood"]["East Vancouver" %in% craigslist[i, "street"]] <- "East Vancouver"
+  
+  craigslist[i, "neighborhood"]["West Vancouver" %in% craigslist[i, "street"]] <- "West Vancouver"
+  craigslist[i, "neighborhood"]["West Coquitlam" %in% craigslist[i, "street"]] <- "West Coquitlam"
+  craigslist[i, "neighborhood"]["Vancouver" %in% craigslist[i, "street"]] <- "Vancouver"
+  
+  
+  craigslist[i, "neighborhood"]["Surrey" %in% craigslist[i, "street"]] <- "Surrey"
+  craigslist[i, "neighborhood"]["South Granville" %in% craigslist[i, "street"]] <- "South Granville"
+  
+  craigslist[i, "neighborhood"]["South Vancouver" %in% craigslist[i, "street"]] <- "South Vancouver"
+  craigslist[i, "neighborhood"]["Richmond Centre" %in% craigslist[i, "street"]] <- "Richmond Central"
+  craigslist[i, "neighborhood"]["Richmond" %in% craigslist[i, "street"]] <- "Richmond"
+  craigslist[i, "neighborhood"]["Port Moody" %in% craigslist[i, "street"]] <- "Port Moody"
+  
+  craigslist[i, "neighborhood"]["Pitt Meadows" %in% craigslist[i, "street"]] <- "Pitt Meadows"
+  craigslist[i, "neighborhood"]["North Vancouver" %in% craigslist[i, "street"]] <- "North Vancouver"
+  craigslist[i, "neighborhood"]["North Coquitlam" %in% craigslist[i, "street"]] <- "North Coquitlam"
+  craigslist[i, "neighborhood"]["North Burnaby" %in% craigslist[i, "street"]] <- "North Burnaby"
+  
+  craigslist[i, "neighborhood"]["New Westminster" %in% craigslist[i, "street"]] <- "New Westminster"
+  craigslist[i, "neighborhood"]["Maple Ridge" %in% craigslist[i, "street"]] <- "Maple Ridge"
+  craigslist[i, "neighborhood"]["East Burnaby" %in% craigslist[i, "street"]] <- "East Burnaby"
+  craigslist[i, "neighborhood"]["Pitt Meadows" %in% craigslist[i, "city"]] <- "Pitt Meadows"
+  craigslist[i, "neighborhood"]["Port Coquitlam" %in% craigslist[i, "city"]] <- "Port Coquitlam"
+  craigslist[i, "neighborhood"]["Port Moody" %in% craigslist[i, "city"]] <- "Port Moody"
+  
+  craigslist[i, "neighborhood"]["Coquitlam West" %in% craigslist[i, "street"]] <- "Laurentian Belaire"
+}
+
+craigslist %>%
+  tidyr::drop_na(., neighborhood) -> craigslist
+```
+
+
+```{r}
+###################################
+### Reading in real estate data ###
+###################################
+
+housing <- read.csv(here::here("data", "housing_data.csv"))
+housing[] <- lapply(housing, as.character)
+housing$neighborhood <- NA
+```
+
+```{r}
+path <- list.files(path = here::here("data"), pattern = ".xlsx")
+df <- tibble::data_frame(path = path) %>%
+  dplyr::mutate(., path = paste0(here::here("data"), "/", path)) %>%
+  dplyr::mutate(., sheet_name = purrr::map(path, readxl::excel_sheets)) %>%
+  tidyr::unnest(.) %>%
+  dplyr::mutate(., data = purrr::map2(
+    path, sheet_name,
+    ~readxl::read_excel(.x, .y)
+  ))
+
+data_streets <- df$data
+
+for(i in 1:length(data_streets)) {
+  housing$neighborhood[housing$street_name %in% (data_streets[[i]] %>%
+  dplyr::pull(.))] <- colnames(data_streets[[i]])
+}
+
+for(i in 1:nrow(housing)) {
+  housing[i, "neighborhood"]["Maple Ridge" %in% housing[i, "city"]] <- "Maple Ridge"
+  housing[i, "neighborhood"]["Marpole Avenue" %in% housing[i, "street_name"] & "Port Coquitlam" %in% housing[i, "city"]] <- "Port Coquitlam"
+  housing[i, "neighborhood"]["Marpole Avenue" %in% housing[i, "street_name"] & "Vancouver West" %in% housing[i, "city"]] <- "Fairview"
+  housing[i, "neighborhood"]["Hamilton Street" %in% housing[i, "street_name"] & "Vancouver West" %in% housing[i, "city"]] <- "Yaletown"
+  housing[i, "neighborhood"]["Hamilton Street" %in% housing[i, "street_name"] & "New Westminster" %in% housing[i, "city"]] <- "Kelvin"
+  housing[i, "neighborhood"]["Tsawwassen" %in% housing[i, "city"]] <- "Tsawwassen"
+}
+```
+
+```{r}
+housing %>%
+  dplyr::mutate(price = stringr::str_sub(.[, "price"], start = 2, end = 8) %>%
+                  stringr::str_remove_all(., ","),
+                squares = stringr::str_remove_all(.[, "squares"], "sq.ft.") %>%
+                  stringr::str_remove_all(., ",")) %>% 
+  dplyr::mutate_at(., .vars = c("price", "squares", "age", "bed", "bath"), funs(as.integer(.))) %>%
+  dplyr::mutate_if(., is.character, as.factor) -> housing
+
+housing %>%
+  dplyr::mutate(SqFt_mod = cut(.$squares, 
+                               breaks = seq(from = 0, to = 1199, by = 100),
+                               labels = paste0(seq(from = 1, to = 1099, by = 100), "-", seq(from = 101, to = 1100, by = 100))),
+                SqFt_mod_2 = cut(.$squares, 
+                                 breaks = seq(from = 1100, to = 3099, by = 250),
+                                 labels = paste0(seq(from = 1101, to = 2849, by = 250), "-", seq(from = 1351, to = 3100, by = 250))),
+                SqFt_mod_3 = cut(.$squares, 
+                                 breaks = seq(from = 3100, to = 13099, by = 500),
+                                 labels = paste0(seq(from = 3101, to = 12599, by = 500), "-", seq(from = 3601, to = 13100, by = 500)))) %>%
+  tidyr::unite(., SqFt_mod, c("SqFt_mod", "SqFt_mod_2", "SqFt_mod_3"), sep = "", remove = TRUE) %>%
+  dplyr::mutate(., SqFt_mod = gsub("NA", "", SqFt_mod)) -> housing
+```
+
+Today, we will be looking at the Vancouver housing market in Canada. We collected rent data from craigslist and also home prices from various websites. A home is on average the most expensive "investment" almost everyone makes and therefore, it is important to know the market. In this blog post, we will be answering questions such as:
+
+- What are the market rates for rents and homes in the Vancouver housing market?
+- At what prices are homes undervalued or overvalued?
+
+The Vancouver housing market is one of the most expensive ones in the world. Consequently, one must spend a lot of money when purchasing a home. However, is the money spend on a home worth the cost? In order to answer this question, we also looked at price to rent ratios. In more detail, we wanted to know:
+
+- What locations have the best price to rent ratios?
+- In what locations should you buy and in what locations should you rent?
+
+```{r echo = FALSE, fig.align='center', out.width = "800px"}
+vancouver <- here::here("reports/figs/van-city.jpg")
+knitr::include_graphics(vancouver)
+```
+
+## Data Collection
+
+The data for this project was obtained from various websites that listed home prices. The rent data on the other hand was collected with the `craigr` package which is available on [github](https://github.com/adletaw/craigr). After we collected the data, we spend a lot of time inserting the neighborhoods by looking at the street names.
+
+We did that in order to decrease the variance for our home prices and rents but on the other hand introduced bias in our analysis. We thought that we would compare and evaluate neighborhoods rather than particular street names due to the fact we only had one house for some street names. Therefore, this would increase the variance for our homes. Consequently, we analysed the prices and rents by neighborhood. If you are interested in finding out more about the bias-varaince trade-off, then check out [this blog post](http://thatdatatho.com/2018/08/08/explaining-bias-variance-trade-off-machine-learning/).
+
+We collected rent data and housing prices from Vancouver, Richmond, New Westminster, and Coquitlam. We restriced our search to apartments that cost less than a million dollars. This is because we did not want to collect any outlier luxury apartments worth millions of dollars.
+
+```{r echo = FALSE, fig.align='center', out.width = "800px"}
+vancouver_maps <- here::here("reports/figs/vancouver-map.png")
+knitr::include_graphics(vancouver_maps)
+```
+
+## What Are the Market Rates for Rent and Home Prices in Vancouver?
+
+### Multiple Linear Regression for Housing Prices
+
+In order to answer this question, we fit a muliple linear regression model. One for rents and one for home prices. For home prices, we regressed `price` on `age`, number of bathrooms `bath`, number of bedrooms `bed`, square feet `squares`, and `neighborhood`.
+
+#### Regression Equation for Housing Prices in the Greater Vancouver Area
+
+$price= \beta_{0} + \beta_{1} age + \beta_{2} bath + \beta_{3} bed + \beta_{4} squares + \beta_{5} neighborhood + \epsilon$
+
+Below, you can find a summary table of the regression output. We only displayed the neighborhoods with the lowest estimates and the neighborhood with the highest estimates. We also displayed `age`, `squares`, `bath`, and `bed` as well as the intercept.
+
+```{r results = "asis"}
+housing %>%
+  stats::lm(price ~ age + bed + bath + squares + neighborhood, data = .) %>%
+  base::summary(.) %>%
+  broom::tidy(.) %>%
+  dplyr::mutate_at(., .vars = c("estimate", "std.error", "statistic", "p.value"), funs(round(., 2))) %>%
+  dplyr::arrange(estimate) %>%
+  pander::pandoc.table(.)
+```
+
+
+From the output above, we can see that `age`, `bed`, `bath`, and `squares` are statistically significant. Some neighborhoods are also significant. As expected, the sign of `age` is negative. This means that on average, holding everything else constant, an one year increase in age decreases the value of the property by around $4861 dollars.
+
+It is interesting to see that home prices in Maple Ridge drop the most when comparing to other neighborhoods. On the other hand, holding everything else constant, a home buyer has to pay 122,073 dollars extra when purchasing a house in Yaletown.
+
+`age`, `squares`, `bed`, `bath`, and `neighborhood` explain around 61% of the variation in home prices. So, 39% ar still unexplained and are due to other factors. The F-statistic is < 0.01 and so we can conclude that our model is better than the intercept-only model.
+
+### What Are the Market Rates for Home Prices in the Greater Vancouver Area?
+
+```{r}
+lm_house_price <- stats::lm(price ~ age + bed + bath + squares + neighborhood, data = housing)
+predicted_values <- data.frame(age = 10, bed = 1, bath = 1, squares = 800, neighborhood = "Yaletown")
+predict(lm_house_price, newdata = predicted_values)
+```
+
+When one wants to buy a home in Yaletown, the market price for a one bedroom, one bathroom apartment with 800 square feet and 10 years old is:
+
+$476094.5 -4861.85*10 + 27452.53*1 + 34660.06*1 + 352.98*800 + 122073.08*1 = 894045.7$
+
+So, whenever you are intereted in finding out the market rate of a particular house, then you can plug in age, number of bathrooms and bedrooms, and square feet into this equation.
+
+If the price of a home is lower than the result of the regression equation, then this house might sell below market value. Likewise, if the price of a home is above the price of the regression equation's output, then this house might be above market value.
+
+The next regression model we fit was for rents.
+
+### Multiple Linear Regression for Rent Prices in the Greater Vancouver Area
+
+We regressed rent prices on bedrooms, square feet, and neigborhoods. For the craigslist data, we unfortunately did not collect covariates for age and number of bathrooms. Consequently, this will lower the variation explained in rent prices.
+
+#### Regression Equation for Rent Prices in the Greater Vancouver Area
+
+$price= \beta_{0} + \beta_{1} bed + \beta_{2} squares + \beta_{3} neighborhood + \epsilon$
+
+```{r}
+craigslist %>%
+  stats::lm(Price ~ Bedrooms + SqFt + neighborhood, data = .) %>%
+  base::summary(.) %>%
+  broom::tidy(.) %>%
+  dplyr::mutate_at(., .vars = c("estimate", "std.error", "statistic", "p.value"), funs(round(., 2))) %>%
+  dplyr::arrange(estimate) %>%
+  pander::pandoc.table(.)
+```
+
+Bedrooms and square feet have positive coefficients. This means that on average, holding everything else constant, the more bedrooms and the more square feet an apartment has, the more expensive it will be. The most expensive neighborhoods are Shaugnessey, Coal Harbour, and Yaletwon. The p-values for these neighborhoods are statistically significant.
+
+`SqFt`,`bedrooms`, and `neighborhood` explain around 50% of the variation in rents. This means that the other 50% is due to other factors and remains unexplained in our model. The F-statistic is again statistically significant, which means that the fitted model with the covariates is better than the intercept-only model.
+
+### What Are the Market Rates for Rent Prices in the Greater Vancouver Area?
+
+The market rate for renting the same 1 bedroom apartment with 800 squre feet in Yaletown would cost $3284 dollars.
+
+The equation would look like this:
+
+$584.04 + 51.94*1 + 1.2*800 + 1689.49*1 = 3284$
+
+```{r}
+lm_rent <- stats::lm(Price ~ Bedrooms + SqFt + neighborhood, data = craigslist)
+predicted_values <- data.frame(Bedrooms = 1, SqFt = 800, neighborhood = "Yaletown")
+predict(lm_rent, newdata = predicted_values)
+```
+
+So, whenever there is an apartment with a renting price below the one you'll get when plugging in the information into the equation above, then this apartment's rent is likely below market value.
+
+Likewise, is the renting price is above the price you'll get from the equation, then the rent is likely above market value.
+
+Here, I use the word likely because our regression equation explains only 50% of the variation in rent prices. Therefore, there might be other factors that contribute to rent prices that are not accounted for in the equation above.
+
+## Price to Rent Ratios for Different Neighborhoods in Vancouver
+
+If you are familiar with the successful real estate investor [Grant Cardone](https://www.youtube.com/watch?v=bSRA9VcrGeI), then you have probably the sentence:
+
+> Rent where you live and own what you can rent.
+
+```{r echo = FALSE, fig.align='center', out.width = "250px"}
+grant_cardone <- here::here("reports/figs/grant-cardone.jpg")
+knitr::include_graphics(grant_cardone)
+```
+
+This is what we are trying to figure out now.
+
+The price to rent ratio is calcutated by the price of the house devided by the yearly rent. So, $latex ratio = \frac{house price}{yearly rent} $. Consequently, you want to rent when the price to rent ratio is high. This happens when the denominator of the equation (rent) is low and house prices, the nominator, is high. On the other hand, you want to buy a property, when the the price to rent ratio is low. Meaning, a low nominator (house prices) and a high denominator (rents).
+
+### In What Locations in the Vancouver Housing Market Should You Buy and in What Locations Should You Rent?
+
+We first calculated the average price of houses and rents in certain neighborhoods with certain square feet. Then we kept the neighborhoods that had at least three home prices listed and three rent listings. The reason why we did it is because we wanted to decrease the variance by averaging the neighborhood prices/rents and also by throwing out houses/apartments that had less than 3 listings.
+
+Afterwards, we calculated the price to rent ratios by by matching apartment prices and apartment rents with the same neighborhood and the same square feet.
+
+The price to rent ratios would have been more accurate if we had also the age of certain apartments. This would ensure an even more accurate matching of house prices and rent prices. Consequently, this would have resulted in more accurate price to rent ratios.
+
+The results are displayed in the table below.
+
+```{r results="asis"}
+# here, we are splitting the craigslist data frame into a list of data frames for each neighborhood
+# then we are grouping by square feet and then calculating the average rent and number of apartments
+# then we are creating a new variable square_neighborhood to do an 
+# inner join later with the housing data
+craigslist %>%
+  tidyr::drop_na(., SqFt) %>%
+  base::split(., .$neighborhood) %>%
+  purrr::map(~dplyr::group_by(., SqFt_mod)) %>%
+  purrr::map(~dplyr::mutate(., avg_price_rent = mean(Price, na.rm = TRUE),
+                            n_rent = n())) %>%
+  purrr::map(~dplyr::distinct(., avg_price, .keep_all = TRUE)) %>%
+  base::do.call(rbind, .) %>%
+  dplyr::select(., SqFt_mod, neighborhood, avg_price_rent, n_rent) %>%
+  tidyr::unite(., square_neighborhood, SqFt_mod, neighborhood, sep = "_") -> rent_avg
+
+# here, we are doing the same thing as above witht the housing data frame
+housing %>%
+  tidyr::drop_na(., squares) %>%
+  base::split(., .$neighborhood) %>%
+  purrr::map(~dplyr::group_by(., SqFt_mod)) %>%
+  purrr::map(~dplyr::mutate(., avg_price_house = mean(price, na.rm = TRUE),
+                            n_housing = n())) %>%
+  purrr::map(~dplyr::distinct(., avg_price, .keep_all = TRUE)) %>%
+  base::do.call(rbind, .) %>%
+  dplyr::select(., neighborhood, SqFt_mod, avg_price_house, n_housing) %>%
+  tidyr::unite(., square_neighborhood, SqFt_mod, neighborhood, sep = "_") -> housing_avg
+
+# now we are doing an inner join on the variable square_neigborhood 
+# then we are calculating the price to rent ratios for neigborhoods with corresponding square feet
+rent_avg %>%
+  dplyr::inner_join(., housing_avg, by = "square_neighborhood") %>%
+  dplyr::mutate(., avg_price_rent = avg_price_rent * 12,
+                price_rent_ratio = avg_price_house / avg_price_rent) %>%
+  dplyr::arrange(desc(price_rent_ratio)) %>%
+  dplyr::select(., -avg_price_rent, -avg_price_house) %>%
+  dplyr::filter(., n_rent > 2 & n_housing > 2) %>%
+  tidyr::separate(., square_neighborhood, into = c("square_feet", "neighborhood"), sep = "_") %>%
+  pander::pandoc.table(.) # %>%
+  # write.table(., file = "price_to_rent.txt", sep = ",", quote = FALSE, row.names = F)
+```
+
+### Buying vs. Renting in the Greater Vancouver Real Estate Market
+
+So, back to the question if you should buy or rent in Vancouver. If you want to live close to downtown Vancouver, then neighborhoods with a high price to rent ratio would be Hastings-Sunrise, Mount Pleasant, or Grandview-Woodland.
+
+On the other hand, if you want to purchase a property for investment purposes then you should buy a home in Kitsilano, West End, Downtown, or Yaletown. These are the neighborhoods with the lowest price to rent ratios. It is also noticeable that these ratios suggest that apartments with higher square feet should be purchased. Consequently, apartments with 900 or more square feet will yield the lowest price to rent ratios. Smaller apartments in these areas, with 400, 500, or 600 square feet won't be as profitable.
+
+In addition to the table above, we also did the same analysis as above except that we predicted the rent prices from the previous regression for the housing data set. Likewise, we predicted the housing prices with the previous housing regression for the craigslist data set.
+
+### Price to Rent Ratios for Different Neighborhoods by Predicting Renting Prices
+
+We predicted rent prices for the housing price data set and then calculated the price to rent ratios.
+
+```{r}
+# regression for rent prices
+craigslist %>%
+  stats::lm(Price ~ Bedrooms + SqFt + neighborhood, data = .) -> lm_rent
+
+# predicting rents for housing data set
+# identifying which levels in craigslist are not in housing
+# and then removing these levels from housing for predictions so we won't get an error
+unused_levels <- housing[which(!(housing$neighborhood) %in% craigslist$neighborhood), "neighborhood"] %>%
+  unique(.) %>%
+  as.character()
+
+pred_df <- housing[!(housing$neighborhood %in% c(unused_levels, "Birchland Manor", "Lower Lonsdale")), ] %>% 
+  gdata::drop.levels(.) %>%
+  dplyr::rename(., Bedrooms = bed, SqFt = squares)
+
+pred_df %>%
+  dplyr::mutate(., predictions_rent = predict(lm_rent, newdata = pred_df, type = "response")) %>%
+  base::split(., .$neighborhood) %>%
+  purrr::map(~dplyr::group_by(., SqFt_mod)) %>%
+  purrr::map(~dplyr::mutate(., avg_price_house = mean(price, na.rm = TRUE),
+                            predicted_rent = mean(predictions_rent, na.rm = TRUE),
+                            n = n())) %>%
+  purrr::map(~dplyr::distinct(., avg_price, .keep_all = TRUE)) %>%
+  base::do.call(rbind, .) %>%
+  dplyr::select(., SqFt_mod, neighborhood, avg_price_house, n, predicted_rent) %>%
+  tidyr::unite(., square_neighborhood, SqFt_mod, neighborhood, sep = "_") %>%
+  dplyr::filter(., n > 2) %>%
+  dplyr::mutate(., price_rent_ratio = avg_price_house / (predicted_rent * 12)) %>%
+  dplyr::arrange(., desc(price_rent_ratio)) %>%
+  tidyr::separate(., square_neighborhood, into = c("square_feet", "neighborhood"), sep = "_") %>%
+  # write.table(., file = "price_to_rent_rent_predicted.txt", sep = ",", quote = FALSE, row.names = F)
+  pander::pandoc.table(., split.table = Inf)
+```
+
+There are still some similarities when we are looking at the lowest price to rent ratios. The Kitsilano neighborhood has very low price to rent ratios for different square feet apartments. Similarily for Yaletown. When we look at the highest price to rent ratios then we see that Cassin is on top with different square feet apartments.
+
+Now, let's look at price to rent ratios where we predict apartment prices for the craigslist data set.
+
+### Price to Rent Ratios for Different Neighborhoods by Predicting Hosuing Prices
+
+Here, we took the craigslist data set and predicted the housing prices with the previous regression model. The table looks like this:
+
+```{r}
+# regression for hosuing prices
+housing %>%
+  stats::lm(price ~ bed + squares + neighborhood, data = .) -> lm_prices
+
+# predicting rents for craigslist data set
+# identifying which levels in craigslist are not in craigslist
+# and then removing these levels from craigslist for predictions
+unused_levels <- craigslist[which(!(craigslist$neighborhood) %in% housing$neighborhood), "neighborhood"] %>%
+  unique(.) %>%
+  as.character()
+
+pred_df <- craigslist[!(craigslist$neighborhood %in% unused_levels), ] %>% 
+  gdata::drop.levels(.) %>%
+  dplyr::rename(., bed = Bedrooms, squares = SqFt)
+
+pred_df %>%
+  dplyr::mutate(., predictions_house = predict(lm_prices, newdata = pred_df, type = "response")) %>%
+  base::split(., .$neighborhood) %>%
+  purrr::map(~dplyr::group_by(., SqFt_mod)) %>%
+  purrr::map(~dplyr::mutate(., avg_price_rent = mean(Price, na.rm = TRUE),
+                            predicted_house = mean(predictions_house, na.rm = TRUE),
+                            n = n())) %>%
+  purrr::map(~dplyr::distinct(., avg_price, .keep_all = TRUE)) %>%
+  base::do.call(rbind, .) %>%
+  dplyr::select(., SqFt_mod, neighborhood, avg_price_rent, n, predicted_house) %>%
+  tidyr::drop_na(., predicted_house) %>%
+  tidyr::unite(., square_neighborhood, SqFt_mod, neighborhood, sep = "_") %>%
+  dplyr::filter(., n > 2) %>%
+  dplyr::mutate(., price_rent_ratio = predicted_house / (avg_price_rent * 12)) %>%
+  dplyr::arrange(., desc(price_rent_ratio)) %>%
+  tidyr::separate(., square_neighborhood, into = c("square_feet", "neighborhood"), sep = "_") %>%
+  # write.table(., file = "price_to_rent_house_predicted.txt", sep = ",", quote = FALSE, row.names = F)
+  pander::pandoc.table(., split.table = Inf)
+```
+
+When we look at the highest price to rent ratios, then we can see that a lot of apartments are located in neighborhoods in Burnaby.
+
+On the other hand, the lowest price to rent ratios appear in the Kitsilano neighborhood with various square feet. In addition to Kitsilano, some Downtown neighborhoods such as Yaletown, Coal Harbour, and West End also have very low price to rent ratios. Again, we see low price to rent ratios for apartments with high square feet.
+
+Overall, when looking at the three tables, we can conclude that the best investment properties can be found in neighborhoods in Downtown Vancouver. These neighborhoods have the lowest price to rent ratios. Consequently, these ones are the most promising ones for a positive cashflow.
+
+The last two tables where we predicted housing prices and rent prices can be taken with a grain of salt. This is because the covariates square feet, bedrooms, and neighborhoods only explain around 50% of the variation in rent prices and only 42% of the variation in housing prices.
+
+The most reliable table is the first one where we calculated price to rent ratios by matching the actual housing and rent prices for certain neighborhoods and suare feet.
+
+## Google Maps of Housing Prices in the Greater Vancouver Area
+
+```{r}
+x <- read.csv(here::here("data", "lat_long_housing.csv"))
+x$neighborhood <- housing$neighborhood
+
+library(ggmap)
+register_google(key = "AIzaSyAui-Y39y609FrTUC2dNuYagemigg4iHSo")
+
+
+real_estate_map <- ggmap(get_googlemap(center = c(lon = -123.037, lat = 49.24),
+                                       zoom = 11,
+                                       scale = 1, size = c(640, 640),
+                                       maptype ='terrain',
+                                       color = 'color')) + 
+  scale_y_continuous(limits = c(49.125, 49.325)) + 
+  ylab("Latitude") +
+  xlab("Longitude")
+
+# jpeg('google_maps.jpg')
+real_estate_map + 
+  geom_point(aes(x = longitude, y = latitude,  colour = neighborhood), data = x, size = 1, alpha = 0.35) + 
+  theme(legend.position = "none")
+# dev.off()
+```
+
+## Limitations of the Study and Improvements
+
+#### Limitations
+
+- We do not know how [biased](http://thatdatatho.com/2018/07/02/statistical-bias-consisteny-random-systematic-error/) our home prices and rent prices are. We combined prices of multiple apartments by looking at their street addresses. Afterwards, we assigned these apartments to a specific neighborhood. This was done to lower the variance but at the same time has increased bias. Therefore, there may be some neighborhoods that only include expensive homes from a certain popular street or cheap apartments from streets less popular.
+
+- As already mentioned, we calculated the price to rent ratios by matching the average price of homes, for certain neighborhoods and square feet, with the average price of rents, for certain neighborhoods and square feet, for more than 3 apartments. This can be improved by also collecting age for rent apartments and then matching on these 3 variables, `square feet`, neighborhood, and age.
+
+- We also wanted to match apartments for rent and apartment prices by the number of bedrooms. However, because the data was sparse, we decided to only match on neighborhood and square feet.
+
+- Another limitation of our analysis is extrapolation.Extrarpolation happenes when we predicted home prices for the craigslist data set. Some predicted home prices are exceeding one million dollars. However, remember that we only collected apartment prices below one million dollars. Therefore, our regression equation does not know how to handle apartment prices that exceed one million dollars. If you are not clear about the concept, then [hear is a great explanation with a great picture](https://stats.stackexchange.com/questions/219579/what-is-wrong-with-extrapolation) which explains the consept perfectly.
+
+#### Improvements
+
+- A way to decrease the bias would be to collect more data. The data cleaning process for the craigslist data was very time intensive because the posts are not well structured. Everyone can upload apartments and it is up to the person who posts how well structured the uploads are. Therefore, the street names are missing or only mentioned in the description sometimes. Consequently, getting information from craigslist might be very time consuming. It is better to find a commercial website who posts rent prices so we can get data from well structured uploads.
+
+- Another improvement would be to [cross-validate](http://thatdatatho.com/2018/10/11/detailed-introduction-cross-validation-machine-learning/) our results. This means that for the multiple linear regressions we do not know how large our error is. A way to solve this problem would be to scrape a validation set from craigslist or other websites and then predict rents and housing prices on this data. Afterwards, one can compare the predicted results to the actual results on the website and then determine how large the error is. This would also show us if the tables with the price to rent ratios where we predicted home and rent prices are reliable.
+
+All analysis was done in R and can be found on my github.
+
+I hope you have enjoyed this little project about the Vancouver housing market. Let me know in the comments below of any improvments of the analysis or if you have any suggestions. Maybe you can come up with your own analysis of real estate in your area.
+
+If you are interested in diving deeper into the code then you can check out my github where I provided all the code for this analysis.
+
+#### Additional Resources
+
+- If you want to create a similar analysis for your own area where you are living, then check out my blog posts about building a web scraper. [Scraping Indeed job postings](http://thatdatatho.com/2018/11/01/web-scraping-indeed-jobs-r-rvest/) and [scraping real estate data](http://thatdatatho.com/2018/12/14/an-introduction-to-scraping-real-estate-data-with-rvest-and-rselenium/). These blog posts will help you to develop your own scraper for any website.
+
+- Also check out my github document where you can find all the analysis and code you need for your own project.
+
+- Here is an article about [price to rent ratios in Vancouver compared to San Francisco](https://vancitycondoguide.com/price-to-rent-higher-than-san-francisco/).
+
+- Here is another news article which talks about [renting vs. buying](https://globalnews.ca/news/4083808/buy-or-rent-vancouver-study/) in the Vancouver housing market. Note that all the graphs were done with ggplot :) . They could have been a little bit nicer with a theme and a centered heading for example.
