@@ -6244,7 +6244,7 @@ x <- read.csv(here::here("data", "lat_long_housing.csv"))
 x$neighborhood <- housing$neighborhood
 
 library(ggmap)
-register_google(key = "AIzaSyAui-Y39y609FrTUC2dNuYagemigg4iHSo")
+register_google(key = "xxxxxxxxxxxxxxxxx")
 
 
 real_estate_map <- ggmap(get_googlemap(
