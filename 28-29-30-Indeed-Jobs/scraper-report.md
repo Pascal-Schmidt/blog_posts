@@ -1,0 +1,286 @@
+Indeed Job Scraper
+================
+Pascal Schmidt
+October 28, 2018
+
+``` r
+knitr::opts_chunk$set(eval=F, echo=T, fig.pos = "center")
+```
+
+Working in a technology driven industry, it is very important to keep up with current trends. Particularly, when one is working in the fied of Data Science where no one knows exactly the boundaries between a Data Scientist, a Data Analyst, or a Data Engineer. Let alone what kind of skills are required for each position. Therefore, we will be attempting to clarify what it takes to become a Data Scientist by developing a webscraper for Indeed job postings.
+
+In this blog post, we will be using the `rvest` package for getting the relevant information from Indeed's website.
+
+So let's get started with what we will be covering:
+
+-   How to get job titles from Indeed's website
+-   How to get job locations
+-   How to look for company names
+-   How to scrape all summary descriptions for each job
+-   Building an entire scraper by putting all parts together
+-   How to analyse the scraped data
+
+First, we will be loading the required packages for this tutorial.
+
+``` r
+library(tidyverse)
+library(rvest)
+library(xml2)
+```
+
+Then we'll have a look at how to get job titles from the web page. We want to look for Data Scientist jobs in Vancouver, Canada.
+
+``` r
+x <- here::here("Indeed_Vancouver_Data_Scientist.png")
+```
+
+![](Indeed_Vancouver_Data_Scientist.png)
+
+After we have done that, we will copy the link address and store the URL in a variable called `url`. Then we will use the `xml2` package and the `read_html` function to parse the page. In short, this means that the function will read in the code from the webpage and break it down into different elements (divs, spans, paragraphs, etc.) for you to analyse it.
+
+``` r
+url <- "https://www.indeed.ca/Data-Scientist-jobs-in-Vancouver%2C+BC"
+page <- xml2::read_html(url)
+```
+
+After we have done that we are ready to extract relevant nodes from the `XML` object. We call elements like divs (
+
+), spans (<span></span>), parapgraphs (
+<p>
+</p>
+) or anchors (<a></a>) nodes after they have been parsed by the `xml2::read_html()` function. Besides element nodes there are also attribute nodes and text nodes.
+
+But wait... how do we know where to find all the relevant information we are looking for? Well, that is the hard part of developing a successful scraper. Luckily, Indeed's website is not very hard to scrape.
+
+So, what we will be doing is looking at the source code of the website and also inspecting individual elements.
+
+Let's first inspect the code. For windows, you can do a right click and then select inspect when you are on Indeed's website. This should look like this:
+
+![](indeed_inspect.png)
+
+Then, click on the little arrow in the top right corner and hover over elements on Indeed's website.
+
+![](indeed-hovering.png)
+
+By doing that you can see that the corresponding code on the right-hand side gets highlighted. The job title `Data Scientist and Statistician` is located under the anchor tag. If we look more into it we can also see the it is located under the `jobtitle CSS selector` and under the xpath `a[@class="jobtitle"]`. This makes it so much easier to find individual pieces on a website. Now you might ask yourself what CSS Selectors are and what a xpath is.
+
+Xpath: a path to specificly extract certain parts from a tree-structured document such as XML or HTML. The path can be very specific and makes it possible to grab certain parts from a website easily.
+
+CSS Selectors: A CSS selector has a similar function to xpath. Namely, locating certain nodes in a document and extracting information from these nodes. Every CSS selector can be translated into an equivalent xpath but not the other way around.
+
+Here is an example of how the syntax of a xml path works: //tagname\[@attribute = "value"\]
+
+Now let's have a look at a html code snippet on Indeed's website:
+
+![](extract_jobtitle.png)
+
+Here we can see that there is an attribute `data-tn-element` which value is `"jobTitle"`. This particular attribute is under the anchor node. So let's construct the xpath:
+
+//a\[@data-tn-element = "jobTitle"\]. And voila we get all job titles. You'll notice that we have included \*// instead of //a in our code below. The star acts as a wildcard and selects all elements or nodes not just the anchor node. For Indeed's website, the attribute `data-tn`element\` is always under the anchor title so the wild card symbol wouldn't be necessary.
+
+In the code below we are selecting all `div` nodes and specify the xpath from where we grab the attribute `title` to get all job titles from the website.
+
+``` r
+#get the job title
+  job_title <- page %>% 
+    rvest::html_nodes("div") %>%
+    rvest::html_nodes(xpath = '//*[@data-tn-element = "jobTitle"]') %>%
+    rvest::html_attr("title")
+```
+
+Alternatively, we could have specified a CSS selector as well. This would look like this:
+
+``` r
+#get the job title
+page %>% 
+  rvest::html_nodes('[data-tn-element="jobTitle"]') %>%
+  rvest::html_attr("title")
+
+# or
+page %>% 
+  rvest::html_nodes('a[data-tn-element="jobTitle"]') %>%
+  rvest::html_attr("title")
+```
+
+Either way, we are getting all the job titles from the website.
+
+Let's move on to the next step. Getting job location and the company. First, let's have a look at the source code and find out where company names and locations are located in the document.
+
+![](company-location.png)
+
+The next picture shows where the company name is located.
+
+![](company-name.png)
+
+We can see that company location and name are located in the `<span>` element with a class attribute value of `location` and `company` respectively.
+
+Let's see how we can extract this information from the document. First we'll specify the xpath.
+
+``` r
+# get company location
+page %>% 
+    rvest::html_nodes("span") %>% 
+    rvest::html_nodes(xpath = '//*[@class="location"]')%>% 
+    rvest::html_text() %>%
+    stringi::stri_trim_both()
+
+# get company name
+page %>% 
+    rvest::html_nodes("span")  %>% 
+    rvest::html_nodes(xpath = '//*[@class="company"]')  %>% 
+    rvest::html_text() %>%
+    stringi::stri_trim_both()
+```
+
+Now, we are getting the same exact information just with the corresponding CSS selectors.
+
+``` r
+# get job location
+page %>% 
+  rvest::html_nodes(".location") %>%
+  rvest::html_text()
+
+# get company name
+page %>% 
+  rvest::html_nodes(".company") %>%
+  rvest::html_text() %>%
+  stringi::stri_trim_both()
+```
+
+Lastly, we want to get the job description from every single job on the website. You'll notice, that on the current page, there is just a little meta description of the job summary. However, we want to get the full description of how many years of experience we need, what skill set is required, and what responsibilities the job entails.
+
+In order to do that we have to collect the links on the website. We do that with the following code.
+
+``` r
+# get links xpath
+page %>% 
+  rvest::html_nodes("div") %>%
+  rvest::html_nodes(xpath = '//*[@data-tn-element="jobTitle"]') %>%
+  rvest::html_attr("href")
+
+# get links CSS selectors
+page %>% 
+  rvest::html_nodes('[data-tn-element="jobTitle"]') %>%
+  rvest::html_attr("href")
+```
+
+After we have collected the links we can now locate where the job description is located in the document.
+
+![](job-description.png)
+
+Looking at the picture above we notice that the jobdescription is in a `<span>` element with a `class` attribute values of `jobsearch-JobComponent-description icl-u-xs-mt--md`. Let's have a look at the code below.
+
+``` r
+# get job description xpath
+page %>%
+  rvest::html_nodes("span")  %>% 
+  rvest::html_nodes(xpath = '//*[@class="jobsearch-JobComponent-description icl-u-xs-mt--md"]') %>% 
+  rvest::html_text() %>%
+  stringi::stri_trim_both()
+
+# get job description CSS selector
+page %>%
+  rvest::html_nodes('.jobsearch-JobComponent-description icl-u-xs-mt--md') %>% 
+  rvest::html_text() %>%
+  stringi::stri_trim_both()
+```
+
+That was the majority of our work! Now we have to build a functioning scraper by putting all parts together. One thing we have to implement in our scraper are multiple page results.
+
+![](page-results.png)
+
+We can do that by messing with the url in our code. Notce what happens when we click on page number 2 until the end.
+
+<https://ca.indeed.com/jobs?q=Data+Scientist&l=Vancouver%2C+BC> <https://ca.indeed.com/jobs?q=Data+Scientist&l=Vancouver%2C+BC&start=10> <https://ca.indeed.com/jobs?q=Data+Scientist&l=Vancouver%2C+BC&start=20> <https://ca.indeed.com/jobs?q=Data+Scientist&l=Vancouver%2C+BC&start=30>
+
+![](url-pages.png)
+
+We have to manually find out how many page results Indeed's website returns for our query. When we have completed that then we are finally ready to build the scraper. Let's go!
+
+``` r
+page_result_start <- 10 # starting page 
+page_result_end <- 190 # last page results
+page_results <- seq(from = page_result_start, to = page_result_end, by = 10)
+
+full_df <- data.frame()
+for(i in seq_along(page_results)) {
+  
+  first_page_url <- "https://ca.indeed.com/jobs?q=Data+Scientist&l=Vancouver%2C+BC"
+  url <- paste0(first_page_url, "&start=", page_results[i])
+  page <- xml2::read_html(first_page_url)
+  # Sys.sleep pauses R for two seconds before it resumes
+  # Putting it there avoids error messages such as "Error in open.connection(con, "rb") : Timeout was reached"
+  Sys.sleep(2)
+  
+  #get the job title
+  job_title <- page %>% 
+    rvest::html_nodes("div") %>%
+    rvest::html_nodes(xpath = '//a[@data-tn-element = "jobTitle"]') %>%
+    rvest::html_attr("title")
+  
+  #get the company name
+  company_name <- page %>% 
+    rvest::html_nodes("span")  %>% 
+    rvest::html_nodes(xpath = '//*[@class="company"]')  %>% 
+    rvest::html_text() %>%
+    stringi::stri_trim_both() -> company.name 
+  
+  
+  #get job location
+  job_location <- page %>% 
+    rvest::html_nodes("span") %>% 
+    rvest::html_nodes(xpath = '//*[@class="location"]')%>% 
+    rvest::html_text() %>%
+    stringi::stri_trim_both()
+  
+  # get links
+  links <- page %>% 
+    rvest::html_nodes("div") %>%
+    rvest::html_nodes(xpath = '//*[@data-tn-element="jobTitle"]') %>%
+    rvest::html_attr("href")
+  
+  job_description <- c()
+  for(i in seq_along(links)) {
+    
+    url <- paste0("https://ca.indeed.com/", links[i])
+    page <- xml2::read_html(url)
+    
+    job_description[[i]] <- page %>%
+      rvest::html_nodes("span")  %>% 
+      rvest::html_nodes(xpath = '//*[@class="jobsearch-JobComponent-description icl-u-xs-mt--md"]') %>% 
+      rvest::html_text() %>%
+      stringi::stri_trim_both()
+  }
+  df <- data.frame(job_title, company_name, job_location, job_description)
+  full_df <- rbind(full_df, df)
+}
+
+df_Vancouver <- full_df %>%
+  dplyr::distinct() %>%
+  dplyr::mutate(city = "Vancouver")
+
+df_Montreal <- full_df %>%
+  dplyr::distinct() %>%
+  dplyr::mutate(city = "Montreal")
+
+df_Toronto <- full_df %>%
+  dplyr::distinct() %>%
+  dplyr::mutate(city = "Toronto")
+
+df_Canada <- rbind(df_Vancouver, df_Toronto, df_Montreal)
+write.csv(df_Canada, "df_Canada.csv")
+
+df_Canada$job_description <- gsub("[\r\n]", "", df_Canada$job_description)
+df_Canada$job_description[grep("bachelor.*", df_Canada$job_description)]
+
+
+df_Canada <- read.csv(here::here("df_Canada.csv"))
+```
+
+![](indeed-last-page.png)
+
+The last page when we built the scraper was 190. So we are specifying `page_result_end` to be 190 and the starting page, `page_result_start`, to be 10.
+
+Afterwards, we are initiating `full_df` and then starting the for loop. We are scraping the job title, the company name, the company location, and the links. Then we are strating the second second for loop where we are collecting all the job summaries from page result 1. Then we are putting all our scraped data into a data frame and go on to page 2. We do that until we have reached the last page and we are done.
+
+I scraper currently only does one city at a time. However, you can easily expand on that and add another for loop where you can specify from which cities you want to scrape data.
