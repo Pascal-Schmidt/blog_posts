@@ -28,11 +28,11 @@ Let's jump into the analysis!
 
 ```{r}
 library(tidyverse)
-analyst_tor <- read.csv(here::here("data_analyst_toronto.csv"))
-engineer_tor <- read.csv(here::here("data_engineer_toronto.csv"))
-analyst_van <- read.csv(here::here("data_analyst_van.csv"))
-engineer_van <- read.csv(here::here("data_engineer_van.csv"))
-data_scientist <- read.csv(here::here("df_Canada.csv"))
+analyst_tor <- read.csv(here::here("data/data_analyst_toronto.csv"))
+engineer_tor <- read.csv(here::here("data/data_engineer_toronto.csv"))
+analyst_van <- read.csv(here::here("data/data_analyst_van.csv"))
+engineer_van <- read.csv(here::here("data/data_engineer_van.csv"))
+data_scientist <- read.csv(here::here("data/df_Canada.csv"))
 
 data_analyst <- rbind(analyst_tor, analyst_van)
 data_engineer <- rbind(engineer_tor, engineer_van)

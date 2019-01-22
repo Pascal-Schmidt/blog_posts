@@ -11,7 +11,7 @@ knitr::opts_chunk$set(message = FALSE, warning = FALSE, echo = TRUE)
 
 ```{r}
 library(tidyverse)
-df_Canada <- read.csv(here::here("df_Canada.csv"))
+df_Canada <- read.csv(here::here("data/df_Canada.csv"))
 ```
 
 Data Science is a hot field and a Data Scientist has been titled as the sexiest job in the 21st century. A lot of people are transisisoning into the field and want to work with data. But what does it take to become a Data Scienitist? 
