@@ -27,14 +27,14 @@ housing <- housing[which(housing$year_built < 2030), ]
 # remove houses that cost more than 3 million
 housing <- housing[which(housing$price < 3000000), ]
 
-# remove square feet that are too low 
+# remove square feet that are too low
 housing <- housing[which(housing$sqft > 100), ]
 
-housing <- housing %>% 
-  dplyr::select(price, description, website) %>% 
-  dplyr::filter(website == "buying") %>% 
-  na.omit() %>% 
-  dplyr::select(-website) %>% 
+housing <- housing %>%
+  dplyr::select(price, description, website) %>%
+  dplyr::filter(website == "buying") %>%
+  na.omit() %>%
+  dplyr::select(-website) %>%
   dplyr::mutate(description = stringr::str_remove_all(description, "[0-9]+"))
 
 dplyr::glimpse(housing)
@@ -48,7 +48,7 @@ dplyr::glimpse(housing)
 ``` r
 ggplot(housing, aes(x = sqrt(price))) +
   geom_histogram(binwidth = 40) +
-  theme_minimal() 
+  theme_minimal()
 ```
 
 ![](nlp_housing_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
@@ -64,27 +64,30 @@ the analysis. These are words that I am not interested in and that seem
 to add no value to the analysis.
 
 ``` r
-remove_words <- c("https", "bldg", "covid", "sqft", "bdrms",
-                  "only.read", "included.read", "moreview", "&amp",
-                  "baths", "bdrm", "bath", "feet", "square", "amp",
-                  "sq.ft", "beds", "you’ll", "uniqueaccommodations.com",
-                  "rentitfurnished.com", "it’s", "http", "below:https",
-                  "change.a", "january", "february", "march", "april", 
-                  "may", "june", "july", "september", "october", "listing.to", 
-                  "november", "december", "note:all", "property.to", "link:http",
-                  "www.uniqueaccomm", "www.uniqueaccomm", "change.to", "furnishedsq",
-                  "craigslist.rental", "craigslist.professional", "ft.yaletown",
-                  "ft.downtown")
+remove_words <- c(
+  "https", "bldg", "covid", "sqft", "bdrms",
+  "only.read", "included.read", "moreview", "&amp",
+  "baths", "bdrm", "bath", "feet", "square", "amp",
+  "sq.ft", "beds", "you’ll", "uniqueaccommodations.com",
+  "rentitfurnished.com", "it’s", "http", "below:https",
+  "change.a", "january", "february", "march", "april",
+  "may", "june", "july", "september", "october", "listing.to",
+  "november", "december", "note:all", "property.to", "link:http",
+  "www.uniqueaccomm", "www.uniqueaccomm", "change.to", "furnishedsq",
+  "craigslist.rental", "craigslist.professional", "ft.yaletown",
+  "ft.downtown"
+)
 
-recipe_nlp <- recipe(price ~., data = housing) %>% 
-  recipes::step_sqrt(price) %>% 
-  textrecipes::step_tokenize(description) %>%  
-  textrecipes::step_stem(description) %>% 
-  textrecipes::step_stopwords(description) %>% 
-  textrecipes::step_stopwords(description, 
-                              custom_stopword_source = remove_words) %>%
+recipe_nlp <- recipe(price ~ ., data = housing) %>%
+  recipes::step_sqrt(price) %>%
+  textrecipes::step_tokenize(description) %>%
+  textrecipes::step_stem(description) %>%
+  textrecipes::step_stopwords(description) %>%
+  textrecipes::step_stopwords(description,
+    custom_stopword_source = remove_words
+  ) %>%
   textrecipes::step_tokenfilter(description, max_tokens = 2500) %>%
-  textrecipes::step_tf(description, weight_scheme = "binary") %>% 
+  textrecipes::step_tf(description, weight_scheme = "binary") %>%
   recipes::step_mutate_at(dplyr::starts_with("tf_"), fn = as.integer)
 ```
 
@@ -116,7 +119,7 @@ all_cores
 
 ``` r
 library(doFuture)
-#doFuture::registerDoFuture()
+# doFuture::registerDoFuture()
 cl <- makeCluster(all_cores)
 plan(cluster, workers = cl)
 ```
@@ -127,9 +130,11 @@ res <-
   tune::tune_grid(
     resamples = folds,
     grid = lambda_grid,
-    metrics = yardstick::metric_set(yardstick::mae,
-                                    yardstick::rsq)
+    metrics = yardstick::metric_set(
+      yardstick::mae,
+      yardstick::rsq
     )
+  )
 
 autoplot(res)
 ```
@@ -137,11 +142,11 @@ autoplot(res)
 ![](nlp_housing_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
 
 ``` r
-tune::collect_metrics(res) %>% 
-  dplyr::filter(.metric == "mae") %>% 
-  dplyr::arrange() %>% 
-  .[["mean"]] %>% 
-  .[[1]] 
+tune::collect_metrics(res) %>%
+  dplyr::filter(.metric == "mae") %>%
+  dplyr::arrange() %>%
+  .[["mean"]] %>%
+  .[[1]]
 ```
 
     ## [1] 149.0941
@@ -150,9 +155,9 @@ tune::collect_metrics(res) %>%
 best_mae <- tune::select_best(res, "mae")
 
 final_lasso <- tune::finalize_workflow(
-  nlp_wflow, 
+  nlp_wflow,
   best_mae
-  )
+)
 final_lasso
 ```
 
@@ -183,10 +188,12 @@ final_lasso
 
 ``` r
 housing_final <- tune::last_fit(
-  final_lasso, 
+  final_lasso,
   split,
-  metrics = yardstick::metric_set(yardstick::mae,
-                                  yardstick::rsq)
+  metrics = yardstick::metric_set(
+    yardstick::mae,
+    yardstick::rsq
+  )
 )
 tune::collect_metrics(housing_final)
 ```
@@ -204,22 +211,22 @@ tune::collect_metrics(housing_final)$.estimate
     ## [1] 146.368329   0.527883
 
 ``` r
-housing_vip <- housing_final %>% 
-  pull(.workflow) %>% 
-  .[[1]] %>% 
-  workflows::pull_workflow_fit() %>% 
+housing_vip <- housing_final %>%
+  pull(.workflow) %>%
+  .[[1]] %>%
+  workflows::pull_workflow_fit() %>%
   vip::vi()
 ```
 
 ``` r
-housing_vip %>% 
-  dplyr::mutate(Variable = stringr::str_remove(Variable, "tf_description_")) %>% 
+housing_vip %>%
+  dplyr::mutate(Variable = stringr::str_remove(Variable, "tf_description_")) %>%
   dplyr::group_by(Sign) %>%
   dplyr::slice_max(abs(Importance), n = 20) %>%
   ungroup() %>%
   mutate(
     Variable = fct_reorder(Variable, Importance)
-  ) %>% 
+  ) %>%
   ggplot(aes(Importance, Variable, fill = Sign)) +
   geom_col() +
   facet_wrap(~Sign, scales = "free") +
@@ -238,8 +245,10 @@ ggsave("pngs/bar_words.png")
 tune::collect_predictions(housing_final) %>%
   ggplot(aes(x = .pred, y = price)) +
   geom_point(alpha = 0.4) +
-  geom_abline(slope = 1, linetype = "dotted", 
-              col = "red", size = 1) +
+  geom_abline(
+    slope = 1, linetype = "dotted",
+    col = "red", size = 1
+  ) +
   theme_minimal()
 ```
 
@@ -248,9 +257,9 @@ tune::collect_predictions(housing_final) %>%
 ``` r
 ggsave("pngs/preds_scatter.png")
 
-tune::collect_predictions(housing_final) %>% 
-  dplyr::mutate(mae = abs(.pred^2 - price^2)) %>% 
-  .[["mae"]] %>% 
+tune::collect_predictions(housing_final) %>%
+  dplyr::mutate(mae = abs(.pred^2 - price^2)) %>%
+  .[["mae"]] %>%
   mean()
 ```
 
