@@ -6,6 +6,9 @@
 *.pdf
 *.txt
 *.tex
+*.csv
+*.Rproj
+*.DS_Store
 **/packrat/lib*/
 **/packrat/bundles*/
 
