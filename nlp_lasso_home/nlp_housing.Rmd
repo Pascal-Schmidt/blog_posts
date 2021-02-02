@@ -121,6 +121,7 @@ res <-
   )
 
 autoplot(res)
+ggsave("pngs/auto.png")
 
 tune::collect_metrics(res) %>%
   dplyr::filter(.metric == "mae") %>%
