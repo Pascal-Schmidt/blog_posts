@@ -45,7 +45,7 @@ mtcars <- mtcars %>%
   tibble::rownames_to_column(var = "Car") %>%
   dplyr::bind_cols(tibble("Buttons" = x)) %>%
   dplyr::mutate(vs = ifelse(vs == 0, "V-shaped", "Straight")) %>%
-  dplyr::mutate(am = ifelse(am == 0, "automatic", "manual"))
+  dplyr::mutate(am = ifelse(am == 0, "automatic", "manual")) 
 
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
