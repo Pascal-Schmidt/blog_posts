@@ -11,34 +11,33 @@ source("modal_dialog.R")
 
 config <- config::get(file = "datatable/config.yml")
 con <- RMySQL::dbConnect(
-  RMySQL::MySQL(), 
-  user = config$db_user, 
+  RMySQL::MySQL(),
+  user = config$db_user,
   password = config$db_password,
-  dbname = config$db_name, 
+  dbname = config$db_name,
   host = config$db_host
 )
 
-mtcars <- con %>% 
-  dplyr::tbl("mtcars_db") %>% 
+mtcars <- con %>%
+  dplyr::tbl("mtcars_db") %>%
   dplyr::collect()
 
 create_btns <- function(x) {
   x %>%
     purrr::map_chr(~
-                     paste0(
-                       '<div class = "btn-group">
+    paste0(
+      '<div class = "btn-group">
                    <button class="btn btn-default action-button btn-info action_button" id="edit_',
-                       .x, '" type="button" onclick=get_id(this.id)><i class="fas fa-edit"></i></button>
+      .x, '" type="button" onclick=get_id(this.id)><i class="fas fa-edit"></i></button>
                    <button class="btn btn-default action-button btn-danger action_button" id="delete_',
-                       .x, '" type="button" onclick=get_id(this.id)><i class="fa fa-trash-alt"></i></button></div>'
-                     ))
+      .x, '" type="button" onclick=get_id(this.id)><i class="fa fa-trash-alt"></i></button></div>'
+    ))
 }
 
 x <- create_btns(mtcars$id)
-mtcars <- mtcars %>% 
+mtcars <- mtcars %>%
   dplyr::bind_cols(tibble("Buttons" = x))
 
-print(mtcars)
 ui <- fluidPage(
 
   # div(style = "display: none;", icon("refresh")),
@@ -67,12 +66,12 @@ ui <- fluidPage(
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
   rv <- shiny::reactiveValues(
-    df = mtcars %>% 
+    df = mtcars %>%
       dplyr::select(-id),
     dt_row = NULL,
     add_or_edit = NULL,
     edit_button = NULL,
-    keep_track_id = nrow(mtcars) + 1
+    keep_track_id = max(mtcars$id) + 1
   )
 
   output$dt_table <- DT::renderDT(
@@ -91,34 +90,43 @@ server <- function(input, output, session) {
 
   ### delete row
   shiny::observeEvent(input$current_id, {
-    shiny::req(!is.null(input$current_id) & stringr::str_detect(input$current_id, pattern = "delete"))
-    rv$dt_row <- which(stringr::str_detect(rv$df$Buttons, pattern = paste0("\\b", input$current_id, "\\b")))
-    
-    sql_id <- rv$df[rv$dt_row, ][["Buttons"]] %>% 
-      stringr::str_extract_all(pattern = "delete_[0-9]+") %>% 
-      unlist() %>% 
+    shiny::req(!is.null(input$current_id) &
+      stringr::str_detect(input$current_id,
+        pattern = "delete"
+      ))
+    rv$dt_row <- which(stringr::str_detect(rv$df$Buttons,
+      pattern = paste0("\\b", input$current_id, "\\b")
+    ))
+
+    sql_id <- rv$df[rv$dt_row, ][["Buttons"]] %>%
+      stringr::str_extract_all(pattern = "delete_[0-9]+") %>%
+      unlist() %>%
       readr::parse_number()
-    
-    print(sql_id)
-    print(rv$dt_row)
+
     query <- stringr::str_glue("DELETE FROM mtcars_db WHERE id = {sql_id}")
     DBI::dbSendQuery(
       con,
       query
     )
-    
+
     rv$df <- rv$df[-rv$dt_row, ]
-    
   })
 
   # when edit button is clicked, modal dialog shows current editable row filled out
   shiny::observeEvent(input$current_id, {
-    shiny::req(!is.null(input$current_id) & stringr::str_detect(input$current_id, pattern = "edit"))
-    rv$dt_row <- which(stringr::str_detect(rv$df$Buttons, pattern = paste0("\\b", input$current_id, "\\b")))
+    shiny::req(!is.null(input$current_id) &
+      stringr::str_detect(input$current_id,
+        pattern = "edit"
+      ))
+    rv$dt_row <- which(stringr::str_detect(rv$df$Buttons,
+      pattern = paste0("\\b", input$current_id, "\\b")
+    ))
     df <- rv$df[rv$dt_row, ]
     modal_dialog(
-      car = df$Car, mpg = df$mpg, cyl = df$cyl, hp = df$hp, disp = df$disp, drat = df$drat,
-      wt = df$wt, qsec = df$qsec, vs = mtcars$vs, am = mtcars$am, gear = df$gear, carb = df$carb,
+      car = df$Car, mpg = df$mpg, cyl = df$cyl, 
+      hp = df$hp, disp = df$disp, drat = df$drat,
+      wt = df$wt, qsec = df$qsec, vs = mtcars$vs, 
+      am = mtcars$am, gear = df$gear, carb = df$carb,
       selected_am = df$am, selected_vs = df$vs, edit = TRUE
     )
     rv$add_or_edit <- NULL
@@ -126,7 +134,9 @@ server <- function(input, output, session) {
 
   # when final edit button is clicked, table will be changed
   shiny::observeEvent(input$final_edit, {
-    shiny::req(!is.null(input$current_id) & stringr::str_detect(input$current_id, pattern = "edit") & is.null(rv$add_or_edit))
+    shiny::req(!is.null(input$current_id) &
+      stringr::str_detect(input$current_id, pattern = "edit") &
+      is.null(rv$add_or_edit))
 
     rv$edited_row <- dplyr::tibble(
       Car = input$car_name,
@@ -143,18 +153,19 @@ server <- function(input, output, session) {
       carb = input$carb,
       Buttons = rv$df$Buttons[rv$dt_row]
     )
-    
-    sql_row <- rv$edited_row %>% 
-      dplyr::select(-Buttons) 
-    
-    id <- rv$df[rv$dt_row, ][["Buttons"]] %>% 
-      stringr::str_extract_all(pattern = "delete_[0-9]+") %>% 
-      unlist() %>% 
+
+    sql_row <- rv$edited_row %>%
+      dplyr::select(-Buttons)
+
+    id <- rv$df[rv$dt_row, ][["Buttons"]] %>%
+      stringr::str_extract_all(pattern = "delete_[0-9]+") %>%
+      unlist() %>%
       readr::parse_number()
-      
-    query <- paste0("UPDATE mtcars_db SET ",
-                    paste0(names(sql_row), "=", "'", unlist(c(sql_row)), "'", collapse = ", "),
-                    stringr::str_glue("WHERE id = {id}")
+
+    query <- paste0(
+      "UPDATE mtcars_db SET ",
+      paste0(names(sql_row), "=", "'", unlist(c(sql_row)), "'", collapse = ", "),
+      stringr::str_glue("WHERE id = {id}")
     )
     DBI::dbSendQuery(
       con,
@@ -192,14 +203,14 @@ server <- function(input, output, session) {
     )
     rv$df <- add_row %>%
       dplyr::bind_rows(rv$df)
-    
-    add_row <- add_row %>% 
-      dplyr::mutate(id = rv$keep_track_id) %>% 
+
+    add_row <- add_row %>%
+      dplyr::mutate(id = rv$keep_track_id) %>%
       dplyr::select(-Buttons)
-    print(add_row)
-    column_names <- paste0(c(names(add_row)), collapse = ", ") %>% 
+
+    column_names <- paste0(c(names(add_row)), collapse = ", ") %>%
       paste0("(", ., ")")
-    values <- paste0("'", unlist(c(add_row)), "'", collapse = ", ") %>% 
+    values <- paste0("'", unlist(c(add_row)), "'", collapse = ", ") %>%
       paste0("(", ., ")")
     query <- paste0(
       "INSERT INTO mtcars_db ",
@@ -211,7 +222,7 @@ server <- function(input, output, session) {
       con,
       query
     )
-    
+
     rv$keep_track_id <- rv$keep_track_id + 1
   })
 
@@ -224,6 +235,10 @@ server <- function(input, output, session) {
     shiny::removeModal()
   })
 }
+
+onStop(function() {
+  dbDisconnect(con)
+})
 
 # Run the application
 shinyApp(ui = ui, server = server)
