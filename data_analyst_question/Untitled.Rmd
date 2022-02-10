@@ -13,8 +13,8 @@ library(googleway)
 library(ggmap)
 library(sf)
 
-key = "AIzaSyAui-Y39y609FrTUC2dNuYagemigg4iHSo"
-register_google(key = "AIzaSyAui-Y39y609FrTUC2dNuYagemigg4iHSo")
+key = "XXX"
+register_google(key = "XXX")
 ```
 
 In this blog post we will be exploring how I answered a question that got me my first job as a data analyst. It was an open ended question and was supposed to be answered in a casual/theoretical way. The question was "How would you collect all cities in Qatar and how I would make sure in which municipality the cities are?". 
