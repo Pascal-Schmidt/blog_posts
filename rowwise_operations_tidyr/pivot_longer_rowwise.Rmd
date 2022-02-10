@@ -1,0 +1,97 @@
+---
+title: "Rowwise Operations With tidyr pivot_longer"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = F, warning = F)
+```
+
+```{r}
+library(tidyverse)
+library(tidytuesdayR)
+```
+
+```{r}
+plastic <- tidytuesdayR::tt_download(tt_load_gh("2021-01-26"))
+plastic[[1]]
+```
+
+We can see that there are certain names for different plastic types in the columns. The columns that count the different types of plastic are from `empty` until `pvc`. There is also a `grand_total` column that sums up all the plastic. Let's do a little quality check and see if the `grand_total` column has all the plastic from column `empty` until column `pvc` summed up. 
+
+For the approach, we will be using the `pivot_longer` function from the `tidyr` package. We will demonstrate some other approaches later that perform some row-wise operations. However, I have a better mental model of the data and what I want to accomplish when I am thinking column-wise. 
+
+```{r}
+plastic[[1]] %>% 
+  tidyr::pivot_longer(empty:pvc) %>% 
+  dplyr::group_by(country, year, parent_company) %>% 
+  dplyr::mutate(grand_total_check = sum(value, na.rm = T)) %>% 
+  dplyr::ungroup() %>% 
+  tidyr::pivot_wider() %>% 
+  dplyr::filter(grand_total_check != grand_total)
+```
+
+And we find some rows where the sum in the plastic columns does not match the total. 
+
+Other approaches with `transpose` from the `purrr` package.
+
+```{r}
+plastic[[1]] %>%
+  dplyr::mutate(
+    grand_total_check = plastic[[1]] %>% 
+      dplyr::select(empty:pvc) %>% 
+      purrr::transpose() %>% 
+      purrr::map_dbl(~ flatten_dbl(.) %>% 
+                       sum(na.rm = T))
+  ) %>% 
+  dplyr::filter(grand_total_check != grand_total)
+```
+
+Or just simply with the base R `rowSums` function. However, this operation is specific to adding up numbers so if you would like to do other row-wise operations, you have to use another function.  
+
+```{r}
+plastic[[1]] %>% 
+  dplyr::mutate(
+    grand_total_check = dplyr::select(
+      ., empty:pvc
+    ) %>% base::rowSums(na.rm = T)
+  ) %>% 
+  dplyr::filter(grand_total_check != grand_total)
+```
+
+Another approach would be to use the `map_dbl` function from the `purrr` package.  
+
+```{r}
+plastic[[1]] %>% 
+  dplyr::mutate(
+    grand_total_check = dplyr::select(
+      ., empty:pvc
+    ) %>% purrr::pmap_dbl(sum, na.rm = T)
+  ) %>% 
+  dplyr::filter(grand_total_check != grand_total)
+```
+
+All these approaches work. However, lately, I have been finding myself using the `pivot_longer` and `pivot_wider` functions a lot from the `tidyr` package to do row-wise operations. 
+
+Another approach would be to use the base R solution with apply.
+
+```{r}
+plastic[[1]] %>% 
+  dplyr::mutate(
+    grand_total_check = apply(dplyr::select(plastic[[1]], empty:pvc), 1, 
+                              function(x) {sum(x, na.rm = TRUE)})
+  ) %>% 
+  dplyr::filter(grand_total_check != grand_total)
+```
+
+Sometimes, you have to first add an id to do row-wise operations column-wise. For example, when you would like to sum up all the rows where the columns are numeric in the `mtcars` data set, you can add an id, `pivot_wider` and then group by id (the row previously) and then sum up the value.    
+
+```{r}
+mtcars %>% 
+  dplyr::select_if(is.numeric) %>% 
+  dplyr::mutate(id = dplyr::row_number()) %>% 
+  tidyr::pivot_longer(-id) %>% 
+  dplyr::group_by(id) %>% 
+  dplyr::summarise(total = sum(value))
+```
+

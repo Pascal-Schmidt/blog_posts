@@ -1,0 +1,145 @@
+---
+title: "Custom Message Hnadler in R Shiny - Resembling InsertUI & RemoveUI ish"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+In April this year, I will have used R Shiny for a year. I am coming from a statistics background and my first programming language I learned was R and then Python. I am using R Shiny almost every week at work and I am amazed with how powerful it can be with no web development knowledge. 
+
+Since I started, I integrated `shinyjs` into my workflow and also a bit of boostrap and css knowledge. I have also dabbled a tiny bit in some basic JavaScript and jQuery. 
+
+I am constantly trying to improve my R Shiny application, in term of UI/UX and also on the server side. That is when I came accross this excellent book (https://unleash-shiny.rinterface.com/index.html)
+
+In chapter 14, there are some detailed explanation about how to dynamically manage content with handlers. At my current work place, I just improved a R Shiny app by using `insertUI` and `removeUI` instead of `renderUI`. The book takes it a step further and explains how to dynamically remove and insert content with ones own hander.
+
+In this tutorial, I will go through the process of resembling the `inertUI` and `removeUI` functions in Shiny with my own custom message handler in JavaScript and jQuery. 
+
+You can check out the applciation here. It is nothing exciting. You are just able to dynamically add cards and remove them with a custom message handler. 
+
+Let's jump into it. 
+
+First, we will be creating a `boot_cards` funtion with the help of bootstrap that we will dynamically insert.
+
+```{r eval = F}
+boot_cards <- function(title = NULL, body = NULL) {
+  boot_cards <-
+    div(
+      class = "class = col-md-3 my-cards",
+      div(
+        class = "panel panel-default",
+        div(
+          class = "panel-heading",
+          p(title)
+        ),
+        div(
+          class = "panel-body",
+          p(body)
+        )
+      )
+    )
+  
+  return(boot_cards)
+
+}
+```
+
+Then we are creating the UI part of the application. In the head of the document, we put the JavaScript and jQuery code that will dynamically remove and add cards. Then we specify a `sidebarPanel` where we will be adding two `textInputs`. One where we can specify the header and body of the card. Then, there are two action buttons. One button will delete the last card and the other one will insert a card after the `placeholder` id. We are also including a script that will tell us if the add button or remove button was clicked. 
+
+```{r eval = F}
+ui <- shiny::fluidPage(
+
+  shiny::singleton(
+    tags$head(tags$script(src = "test.js"))
+  ),
+
+  div(
+    class = "row",
+    div(
+      shiny::sidebarPanel(
+        id = "sidebar",
+        shiny::textInput(inputId = "header_add", label = "Add Title", placeholder = "Title"),
+        shiny::textInput(inputId = "body_add", label = "Add Body", placeholder = "Body"),
+        shiny::actionButton(inputId = "remove", label = "Remove Card"),
+        shiny::actionButton(inputId = "add", label = "Add Card")
+      )
+    ),
+    div(id = "placeholder")
+  ),
+  
+  shiny::includeScript("www/button_click.js")
+
+)
+```
+
+Let's jump to the server side. First, we will be creating a `cards` function. With this function, we will be communicating from R to JavaSscript. We will be sending the bootsrap cards and which button has been clicked (add or remove) to JavaScript which will be inserting cards or removing cards without putting too much load on the server side. 
+
+```{r eval = F}
+cards <- function(item, button, session = shiny::getDefaultReactiveDomain()) {
+  session$sendCustomMessage(
+    type = 'add-remove-cards',
+    message = list(
+      card = as.character(item),
+      add_remove = button
+    )
+  )
+}
+```
+
+```{r eval = F}
+$(function() {
+  Shiny.addCustomMessageHandler('add-remove-cards', function(message) {
+    
+    var card = $.parseHTML(message.card);
+    var btn  = message.add_remove
+    var card_len = $(".my-cards").length;
+    
+    if(btn === "add") {
+      if(card_len === 0) {
+        $(card).insertAfter($('#placeholder'));
+      } else {
+        $(card).insertAfter($('.my-cards:last'));
+      }
+    } else {
+      $(".my-cards").last().remove()
+    }
+  });
+});
+```
+
+In the JavaScript function above, we send the message argument from R to JavaScript. The message argument is an R list that gets converted to JSON when sent to JavaScript. We then get the elements of the now JSON object with the dot `.`. So `message.card` gives us the HTML for the card and `message.add_remove` tells us which button has been pressed, the add or remove button. You have not seen yet the code for the buttons. It is this one:
+
+```{r}
+$("button").click(function() {
+    var id = this.id;
+    Shiny.setInputValue("button_clicked", id, {priority: "event"})
+});
+```
+
+In our R Shiny application we send the button id from JavaScript to R with `Shiny.setInputValue()`. We give it an `inputId` of `button_clicked` and send the id every time a button is clicked. I would have been more efficient to include the button id in the first JavaScript function. Now we have to communicate from JavaScript to R with `Shiny.setInputValue()` and then back to JavaScript again. Depending on what button has been clicked, the first function will remove or add a bootstrap card. 
+
+The server code looks like this: 
+
+```{r}
+server <- function(input, output, session) {
+
+  shiny::observeEvent(input$remove | input$add, {
+    
+    cards(
+      item = boot_cards(
+        input$header_add,
+        input$body_add
+      ), 
+      button = input$button_clicked
+    )
+    
+  })
+
+}
+```
+
+When either action button is clicked, the `cards` function adds or removes a card. 
+
+That was the tutorial. I have barely been using JavaScript and this is my first time attempting to create my own handler in R Shiny, so I am sure there are a lot of improvements to be made. If you have any feedback or suggestions for feedback, I would highly appreciate it. Thanks for reading
